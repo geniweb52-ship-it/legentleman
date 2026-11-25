@@ -16,6 +16,13 @@ ob_start(); ?>
     <p class="!mb-0 mt-4 font-semibold !text-ink">Téléphone</p><p class="!mb-0 text-sm mt-1">24 h/24, 7 j/7</p>
     <p class="!mb-0 mt-4 text-sm font-semibold !text-forest tabular-nums"><?= e($display) ?></p>
   </a>
+  <?php if (defined('SHOP_TIKTOK') && SHOP_TIKTOK !== ''): ?>
+  <a href="<?= e(SHOP_TIKTOK) ?>" target="_blank" rel="noopener" class="sm:col-span-2 rounded-2xl bg-white border border-line p-6 hover:border-forest transition-colors flex items-center gap-4">
+    <span class="w-12 h-12 shrink-0 rounded-full bg-ink text-white flex items-center justify-center"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg></span>
+    <span class="flex-1"><span class="block font-semibold text-ink">TikTok</span><span class="block text-sm mt-1">Nouveautés, essayages et looks du moment : @legentleman395</span></span>
+    <span class="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-forest">Suivre <?= icon('arrow-right', 'w-4 h-4') ?></span>
+  </a>
+  <?php endif; ?>
 </div>
 <h2>Questions fréquentes</h2>
 <div class="divide-y divide-line border-y border-line">

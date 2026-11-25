@@ -19,6 +19,7 @@ const SHOP_TAGLINE = "L'élégance, sans compromis.";
 const SHOP_ADDRESS = 'Dakar, Sénégal';
 const SHOP_PHONE = '221776502698';
 const WHATSAPP_NUMBER = '221776502698';
+const SHOP_TIKTOK = 'https://www.tiktok.com/@legentleman395'; // page TikTok (laisser '' pour masquer)
 const ORANGE_PAYMENT_LINK = '';
 const FREE_DELIVERY_THRESHOLD = 100000;
 
