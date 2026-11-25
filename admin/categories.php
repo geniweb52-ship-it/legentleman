@@ -83,7 +83,7 @@ require __DIR__ . '/layout.php';
     <form method="post" class="space-y-4"><?= csrf_field() ?><input type="hidden" name="form_action" value="add">
       <label class="block"><span class="label">Nom</span><input name="name" required maxlength="100" class="field" placeholder="Ex. T-shirts & Polos"></label>
       <button class="btn btn-primary w-full"><?= icon('plus', 'w-4 h-4') ?> Créer</button>
-      <p class="text-xs text-muted">L'ordre détermine l'affichage sur l'accueil et dans les filtres. Sur l'accueil, chaque catégorie affiche son image (sinon la photo du dernier produit). Une catégorie sans produit reste visible si elle a une image, avec la mention « Bientôt disponible ».</p>
+      <p class="text-xs text-muted">L'ordre détermine l'affichage sur l'accueil et dans les filtres. Sur l'accueil, chaque catégorie affiche son image (sinon la photo du dernier produit). Une catégorie sans produit reste visible, avec la mention « Bientôt disponible ».</p>
     </form>
   </section>
 </div>

@@ -4,11 +4,11 @@ require_once __DIR__ . '/includes/helpers.php';
 
 $products = $pdo->query("SELECT p.*, c.name AS category_name, " . PRODUCT_STOCK_SQL . " stock_total FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.active=1 AND p.is_gift_box=0 ORDER BY p.created_at DESC LIMIT 8")->fetchAll();
 // Image de la catégorie (choisie dans l'admin), sinon la photo du dernier produit ajouté.
-// Les catégories encore vides restent visibles si elles ont une image (« Bientôt disponible »).
+// Toutes les catégories sont affichées, même vides (« Bientôt disponible »).
 $categories = $pdo->query("SELECT c.name, c.slug, c.image cover,
     (SELECT p.image FROM products p WHERE p.category_id=c.id AND p.active=1 AND p.image IS NOT NULL AND p.image<>'' ORDER BY p.created_at DESC LIMIT 1) image,
     (SELECT COUNT(*) FROM products p WHERE p.category_id=c.id AND p.active=1) total
-    FROM categories c WHERE c.slug<>'tous' HAVING total > 0 OR cover IS NOT NULL ORDER BY c.sort_order")->fetchAll();
+    FROM categories c WHERE c.slug<>'tous' ORDER BY c.sort_order")->fetchAll();
 foreach ($categories as &$cat) {
     if (!empty($cat['cover'])) $cat['image'] = url($cat['cover']);
 }
