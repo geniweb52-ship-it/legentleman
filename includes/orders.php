@@ -6,6 +6,15 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/helpers.php';
 
+/** Adresse absolue d'une image ou d'une page du site (les adresses externes sont gardées telles quelles). */
+function absolute_url(string $url): string
+{
+    $url = image_normalize($url);
+    if ($url === '' || preg_match('~^https?://~i', $url)) return $url;
+    $base = rtrim(BASE_URL, '/');
+    return site_url(ltrim($base !== '' && str_starts_with($url, $base) ? substr($url, strlen($base)) : $url, '/'));
+}
+
 /** Adresse absolue du site (ex. https://legentleman.sn/gentleman/facture.php). */
 function site_url(string $path = ''): string
 {

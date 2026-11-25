@@ -132,6 +132,7 @@ $selectedZone = (int) ($_POST['zone_id'] ?? 0);
 $selectedPayment = (string) ($_POST['payment_method'] ?? '');
 
 $pageTitle = 'Finaliser la commande';
+$pageNoindex = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="max-w-site mx-auto px-4 sm:px-6 pt-6">

@@ -28,6 +28,7 @@ if ($ref !== '' && ($known || $_SERVER['REQUEST_METHOD'] === 'POST')) {
 
 $steps = ['nouvelle' => 'Commande reçue', 'payee' => 'Paiement confirmé', 'en_preparation' => 'En préparation', 'expediee' => 'En livraison', 'livree' => 'Livrée'];
 $pageTitle = 'Suivre ma commande';
+$pageNoindex = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="max-w-3xl mx-auto px-4 sm:px-6 pt-6">

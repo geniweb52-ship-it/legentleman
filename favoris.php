@@ -11,6 +11,7 @@ if ($ids) {
     $products = $stmt->fetchAll();
 }
 $pageTitle = 'Mes favoris';
+$pageNoindex = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="max-w-site mx-auto px-4 sm:px-6 pt-6" data-favorites-page="<?= isset($_GET['ids']) ? 'loaded' : 'pending' ?>">

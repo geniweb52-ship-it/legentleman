@@ -86,6 +86,22 @@ $pageTitle = $product['name'];
 $pageDescription = mb_substr(implode(' ', $paragraphs) ?: $product['name'], 0, 155);
 $pageImage = isset($images[0]) ? image_normalize($images[0]) : null;
 $productUrl = site_url('produit.php?id=' . $id);
+$pageCanonical = $productUrl;
+$pageJsonLd = [
+    '@type' => 'Product',
+    'name' => $product['name'],
+    'description' => $pageDescription,
+    'image' => array_map('absolute_url', array_slice($images, 0, 4)),
+    'brand' => ['@type' => 'Brand', 'name' => SHOP_NAME],
+    'sku' => 'LG-' . $id,
+    'offers' => [
+        '@type' => 'Offer', 'url' => $productUrl, 'priceCurrency' => 'XOF', 'price' => (int) $product['price'],
+        'availability' => $totalStock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+        'itemCondition' => 'https://schema.org/NewCondition',
+        'seller' => ['@type' => 'Organization', 'name' => SHOP_NAME],
+    ],
+];
+if (!empty($product['category_name'])) $pageJsonLd['category'] = $product['category_name'];
 $buyUrl = site_url('acheter.php?id=' . $id);
 $hasStickyBar = true;
 $hideReassurance = true;

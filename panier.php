@@ -143,6 +143,7 @@ $waMessage = implode("\n", [
 ]);
 
 $pageTitle = 'Panier';
+$pageNoindex = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="max-w-site mx-auto px-4 sm:px-6 pt-6">

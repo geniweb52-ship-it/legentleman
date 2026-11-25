@@ -20,6 +20,7 @@ $isOrange = $order['payment_method'] === 'orange';
 $waUrl = whatsapp_url(order_whatsapp_message($order, $items));
 
 $pageTitle = $paid ? 'Paiement reçu' : 'Commande enregistrée';
+$pageNoindex = true;
 require __DIR__ . '/includes/header.php';
 ?>
 <main class="max-w-3xl mx-auto px-4 pt-12">

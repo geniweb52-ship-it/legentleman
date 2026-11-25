@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/themes.php';
+require_once __DIR__ . '/orders.php';
 $holiday = active_holiday_theme($pdo);
 $currentPage = basename($_SERVER['SCRIPT_NAME'] ?? '');
 $isNewArrivals = $currentPage === 'boutique.php' && ($_GET['sort'] ?? '') === 'new' && empty($_GET['cat']);
@@ -11,19 +12,32 @@ $navLinks = [
     ['À propos', url('a-propos.php'), $currentPage === 'a-propos.php'],
 ];
 $flash = take_flash();
+// Référencement (Google, partages WhatsApp / Facebook) : adresses absolues obligatoires.
+$metaTitle = ($pageTitle ?? SHOP_NAME) . ' | ' . SHOP_NAME;
+$metaDescription = $pageDescription ?? "Vêtements, chaussures, tenues traditionnelles, accessoires et coffrets cadeaux pour l'homme moderne. Livraison rapide à Dakar et partout au Sénégal.";
+$metaCanonical = $pageCanonical ?? site_url($currentPage === 'index.php' ? '' : $currentPage);
+$metaImage = absolute_url($pageImage ?? url('assets/img/brand/logo.png'));
 ?>
 <!doctype html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= e($pageTitle ?? SHOP_NAME) ?> | <?= e(SHOP_NAME) ?></title>
-  <meta name="description" content="<?= e($pageDescription ?? 'Vêtements, chaussures, accessoires et coffrets cadeaux pour l\'homme moderne. Livraison rapide à Dakar et partout au Sénégal.') ?>">
+  <title><?= e($metaTitle) ?></title>
+  <meta name="description" content="<?= e($metaDescription) ?>">
+  <?php if (!empty($pageNoindex)): ?><meta name="robots" content="noindex, follow"><?php else: ?><link rel="canonical" href="<?= e($metaCanonical) ?>"><?php endif; ?>
   <meta name="theme-color" content="<?= e($holiday['colors'][0] ?? '#2E4A36') ?>">
-  <meta property="og:title" content="<?= e(($pageTitle ?? SHOP_NAME) . ' | ' . SHOP_NAME) ?>">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="<?= e($pageImage ?? url('assets/img/brand/logo.png')) ?>">
-  <link rel="icon" type="image/png" href="<?= e(url('assets/img/brand/favicon.png')) ?>">
+  <meta property="og:site_name" content="<?= e(SHOP_NAME) ?>">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="<?= e($metaTitle) ?>">
+  <meta property="og:description" content="<?= e($metaDescription) ?>">
+  <meta property="og:type" content="<?= isset($pageJsonLd['@type']) && $pageJsonLd['@type'] === 'Product' ? 'product' : 'website' ?>">
+  <meta property="og:url" content="<?= e($metaCanonical) ?>">
+  <meta property="og:image" content="<?= e($metaImage) ?>">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" sizes="48x48" href="<?= e(url('assets/img/brand/favicon-48.png')) ?>">
+  <link rel="icon" type="image/png" sizes="96x96" href="<?= e(url('assets/img/brand/favicon-96.png')) ?>">
+  <link rel="icon" type="image/png" sizes="192x192" href="<?= e(url('assets/img/brand/favicon-192.png')) ?>">
   <link rel="apple-touch-icon" href="<?= e(url('assets/img/brand/apple-touch-icon.png')) ?>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,6 +45,21 @@ $flash = take_flash();
   <style>/* Secours : panneaux et notification restent cachés même si le CSS tarde à charger */ .is-hidden{display:none!important} .toast{opacity:0;pointer-events:none} .toast.show{opacity:1;pointer-events:auto}</style>
   <link rel="stylesheet" href="<?= e(asset('assets/app.css')) ?>">
   <?= $holiday ? holiday_theme_style($holiday) : '' ?>
+  <?php
+  // Données structurées : nom du site + logo (accueil), fiche produit (prix, stock) sur les pages produit.
+  $jsonLd = [];
+  if ($currentPage === 'index.php') {
+      $sameAs = array_values(array_filter([defined('SHOP_TIKTOK') ? SHOP_TIKTOK : '']));
+      $jsonLd[] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => SHOP_NAME, 'alternateName' => 'Le Gentleman Dakar', 'url' => site_url('')];
+      $jsonLd[] = ['@context' => 'https://schema.org', '@type' => 'ClothingStore', 'name' => SHOP_NAME, 'url' => site_url(''),
+          'logo' => site_url('assets/img/brand/favicon-192.png'), 'image' => site_url('assets/img/brand/logo.png'),
+          'description' => $metaDescription, 'telephone' => '+' . SHOP_PHONE, 'priceRange' => 'FCFA',
+          'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Dakar', 'addressCountry' => 'SN'], 'sameAs' => $sameAs];
+  }
+  if (!empty($pageJsonLd)) $jsonLd[] = ['@context' => 'https://schema.org'] + $pageJsonLd;
+  foreach ($jsonLd as $ld): ?>
+  <script type="application/ld+json"><?= json_encode($ld, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
+  <?php endforeach; ?>
 </head>
 <body class="bg-cream text-ink font-sans antialiased<?= $holiday ? ' theme-' . e($holiday['key']) : '' ?>">
   <a href="#contenu" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded">Aller au contenu</a>
