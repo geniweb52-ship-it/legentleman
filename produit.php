@@ -247,7 +247,7 @@ require __DIR__ . '/includes/header.php';
 
         <div class="mt-7 grid gap-3">
           <button class="btn btn-primary w-full !min-h-[54px] text-base" data-submit <?= $totalStock > 0 ? '' : 'disabled' ?>><?= icon('bag') ?> <span data-submit-label><?= $totalStock > 0 ? 'Ajouter au panier' : 'Épuisé' ?></span></button>
-          <a href="<?= e(whatsapp_url('Bonjour, je souhaite commander : ' . $product['name'] . ' (' . money((int) $product['price']) . ($readyText ? ', ' . $readyText : '') . ')')) ?>" target="_blank" rel="noopener" class="btn btn-outline w-full !min-h-[54px] text-base" data-whatsapp data-product="<?= e($product['name']) ?>" data-price="<?= e(money((int) $product['price']) . ($readyText ? ', ' . $readyText : '')) ?>" data-url="<?= e((isset($_SERVER['HTTP_HOST']) ? ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : '') . url('produit.php?id=' . $id)) ?>"><?= icon('whatsapp', 'w-5 h-5 text-[#1DA851]') ?> Commander sur WhatsApp</a>
+          <button type="submit" name="then" value="whatsapp" class="btn btn-outline w-full !min-h-[54px] text-base" data-whatsapp <?= $totalStock > 0 ? '' : 'disabled' ?>><?= icon('whatsapp', 'w-5 h-5 text-[#1DA851]') ?> Commander sur WhatsApp</button>
           <div class="grid grid-cols-2 gap-3">
             <button type="button" class="btn btn-outline w-full" data-product-share data-product-id="<?= (int) $id ?>" data-share-url="<?= e($productUrl) ?>" data-share-title="<?= e($product['name']) ?>" data-share-text="<?= e($product['name'] . ' — ' . money((int) $product['price'])) ?>">Partager</button>
             <a href="<?= e($buyUrl) ?>" class="btn btn-outline w-full" data-buy-link data-product-id="<?= (int) $id ?>">Acheter directement</a>

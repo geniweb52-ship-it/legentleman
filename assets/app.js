@@ -146,14 +146,16 @@
     if (panel) openPanel(panel);
   }));
   $$('[data-close]').forEach((btn) => btn.addEventListener('click', () => {
-    const panel = btn.closest('#search-panel, #mobile-menu, .filter-drawer');
+    const panel = btn.closest('[data-panel], #search-panel, #mobile-menu, .filter-drawer');
     if (panel) closePanel(panel);
   }));
   document.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Escape') return;
-    const open = $('#search-panel:not(.is-hidden), #mobile-menu:not(.is-hidden), .filter-drawer.open');
+    const open = $('[data-panel]:not(.is-hidden), #search-panel:not(.is-hidden), #mobile-menu:not(.is-hidden), .filter-drawer.open');
     if (open) closePanel(open);
   });
+  const autoPanel = $('[data-panel][data-autoopen]');
+  if (autoPanel) openPanel(autoPanel);
   document.addEventListener('keydown', (ev) => {
     if (ev.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName)) {
       const panel = $('#search-panel');
@@ -389,26 +391,12 @@
       } else {
         hint.textContent = '';
       }
-      if (wa) {
-        const parts = [wa.dataset.product];
-        if (bundle) {
-          const contents = bundleSelectors.map((component) => {
-            const choices = ['size', 'color'].map((key) => {
-              const value = componentChoiceValue(component, key);
-              return value ? (key === 'size' ? 'taille ' : 'couleur ') + value : '';
-            }).filter(Boolean);
-            const selectedColor = componentChoiceValue(component, 'color');
-            const colorLabel = $('[data-component-color-label]', component);
-            if (colorLabel) colorLabel.textContent = selectedColor ? ': ' + selectedColor : '';
-            return `${component.dataset.componentName}${choices.length ? ' (' + choices.join(', ') + ')' : ''} × ${component.dataset.componentQuantity}`;
-          }).filter(Boolean);
-          if (contents.length) parts.push('composition : ' + contents.join(', '));
-        } else {
-          if (size) parts.push('taille ' + size);
-          if (color) parts.push(color.toLowerCase());
-        }
-        const msg = `Bonjour, je souhaite commander : ${parts.join(', ')} × ${qtyInput.value} (${wa.dataset.price}).\n${wa.dataset.url}`;
-        wa.href = wa.href.split('?')[0] + '?text=' + encodeURIComponent(msg);
+      if (bundle) {
+        bundleSelectors.forEach((component) => {
+          const selectedColor = componentChoiceValue(component, 'color');
+          const colorLabel = $('[data-component-color-label]', component);
+          if (colorLabel) colorLabel.textContent = selectedColor ? ': ' + selectedColor : '';
+        });
       }
       if (bundle && buyLink && bundleSelectors.length) {
         const params = new URLSearchParams({ id: buyLink.dataset.productId, quantity: qtyInput.value });
@@ -427,15 +415,6 @@
     };
     [...colorInputs, ...sizeInputs, ...bundleSelectors.flatMap((component) => $$('select[data-component-choice], input[type=radio][data-component-choice]', component))].forEach((i) => i.addEventListener('change', refresh));
     qtyInput.addEventListener('change', refresh);
-    if (wa && bundle) {
-      wa.addEventListener('click', (event) => {
-        if (hasMissingBundleChoice() || (bundleAvailable !== null && bundleAvailable < 1)) {
-          event.preventDefault();
-          showToast(bundleAvailable !== null && bundleAvailable < 1 ? 'Stock du coffret épuisé' : 'Choisissez les tailles et couleurs demandées', 'error');
-          incompleteBundleComponent()?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      });
-    }
     if (share) {
       share.addEventListener('click', async () => {
         trackProductEvent('share_click');
@@ -492,6 +471,15 @@
         refresh();
         showToast('Choisissez votre taille', 'error');
         sizeInputs[0].closest('fieldset').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      // « Commander sur WhatsApp » : envoi classique, puis fenêtre de commande du panier.
+      if (ev.submitter && ev.submitter.value === 'whatsapp') {
+        let then = $('input[name=then]', productForm);
+        if (!then) { then = document.createElement('input'); then.type = 'hidden'; then.name = 'then'; productForm.appendChild(then); }
+        then.value = 'whatsapp';
+        if (wa) { wa.disabled = true; wa.innerHTML = '<span class="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span> Un instant…'; }
+        productForm.submit();
         return;
       }
       const labels = submitBtns.map((b) => b.innerHTML);

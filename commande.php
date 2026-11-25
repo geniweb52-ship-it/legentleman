@@ -18,6 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $note = mb_substr(trim((string) ($_POST['note'] ?? '')), 0, 160);
     $zoneId = (int) ($_POST['zone_id'] ?? 0);
     $payment = (string) ($_POST['payment_method'] ?? '');
+    // « Commander sur WhatsApp » (fenêtre du panier) : adresse et paiement peuvent être précisés dans la conversation.
+    $channel = ($_POST['channel'] ?? '') === 'whatsapp' ? 'whatsapp' : 'site';
+    if ($channel === 'whatsapp') {
+        if ($address === '') $address = 'À préciser sur WhatsApp';
+        if ($payment === '') $payment = 'delivery';
+    }
     if ($firstName === '' || $lastName === '') $errors[] = 'Indiquez votre prénom et votre nom.';
     if ($phone === '' || $address === '') $errors[] = 'Téléphone et adresse sont requis.';
     if ($phone !== '' && !preg_match('/^\+?[0-9\s]{8,20}$/', $phone)) $errors[] = 'Numéro de téléphone invalide.';
@@ -28,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$zone) $errors[] = 'Choisissez une zone de livraison.';
 
     if (!$errors) {
+        orders_channel_ensure($pdo);
         try {
             $pdo->beginTransaction();
             $subtotal = 0;
@@ -90,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $campaignStmt = $pdo->prepare('SELECT id FROM qr_campaigns WHERE token=?');
             $campaignStmt->execute([preg_match('/^[a-f0-9]{32}$/', $campaignToken) ? $campaignToken : '']);
             $campaignId = $campaignStmt->fetchColumn() ?: null;
-            $orderStmt = $pdo->prepare('INSERT INTO orders (reference,customer_id,delivery_zone_id,campaign_id,customer_name,first_name,last_name,phone,address,note,payment_method,subtotal,delivery_fee,total,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,"nouvelle")');
-            $orderStmt->execute([$reference, $customerId, $zoneId, $campaignId, $name, $firstName, $lastName, $phone, $address, $note ?: null, $payment, $subtotal, $deliveryFee, $total]);
+            $orderStmt = $pdo->prepare('INSERT INTO orders (reference,customer_id,delivery_zone_id,campaign_id,customer_name,first_name,last_name,phone,address,note,payment_method,channel,subtotal,delivery_fee,total,status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,"nouvelle")');
+            $orderStmt->execute([$reference, $customerId, $zoneId, $campaignId, $name, $firstName, $lastName, $phone, $address, $note ?: null, $payment, $channel, $subtotal, $deliveryFee, $total]);
             $orderId = (int) $pdo->lastInsertId();
             $itemStmt = $pdo->prepare('INSERT INTO order_items (order_id,variant_id,product_name,size,color,price,quantity,ready_date) VALUES (?,?,?,?,?,?,?,?)');
             $componentInsert = $pdo->prepare('INSERT INTO order_item_components (order_item_id,variant_id,product_name,size,color,quantity_per_bundle) VALUES (?,?,?,?,?,?)');
@@ -112,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['last_order'] = $reference;
             $_SESSION['orders'][] = $reference;
             $_SESSION['orders'] = array_slice(array_values(array_unique($_SESSION['orders'])), -20);
-            redirect(order_page_url($reference));
+            redirect(order_page_url($reference, $channel === 'whatsapp' ? ['wa' => 1] : []));
         } catch (RuntimeException $exception) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             $errors[] = $exception->getMessage();
@@ -156,6 +163,7 @@ require __DIR__ . '/includes/header.php';
 
   <form method="post" class="mt-8 grid lg:grid-cols-[1fr_400px] gap-8 items-start" data-checkout data-subtotal="<?= $subtotal ?>" data-free="<?= FREE_DELIVERY_THRESHOLD ?>">
     <?= csrf_field() ?>
+    <?php if (($_POST['channel'] ?? '') === 'whatsapp'): ?><input type="hidden" name="channel" value="whatsapp"><?php endif; ?>
     <div class="space-y-6">
       <section class="rounded-2xl bg-white border border-line p-5 sm:p-7">
         <h2 class="font-display text-2xl flex items-center gap-3"><span class="text-forest"><?= icon('map-pin', 'w-6 h-6') ?></span> Livraison</h2>

@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS orders (
   address VARCHAR(255) NOT NULL,
   note VARCHAR(160) NULL,
   payment_method ENUM('wave','orange','delivery') NOT NULL,
+  channel ENUM('site','whatsapp') NOT NULL DEFAULT 'site',
   subtotal INT UNSIGNED NOT NULL,
   delivery_fee INT UNSIGNED NOT NULL,
   total INT UNSIGNED NOT NULL,

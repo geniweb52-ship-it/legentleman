@@ -6,6 +6,8 @@ require_once __DIR__ . '/includes/cart.php';
 /** Termine une action du panier : JSON pour les requêtes AJAX, sinon redirection. */
 function cart_respond(bool $ok, string $message, string $fallback): never
 {
+    // Bouton « Commander sur WhatsApp » de la fiche produit : article ajouté, puis fenêtre de commande du panier.
+    if ($ok && ($_POST['then'] ?? '') === 'whatsapp') $fallback = 'panier.php?wa=1';
     if (wants_json()) {
         header('Content-Type: application/json; charset=utf-8');
         if (!$ok) http_response_code(422);
@@ -142,6 +144,8 @@ $waMessage = implode("\n", [
     '💳 Paiement (Wave / Orange Money / à la livraison) : ',
 ]);
 
+$zones = $pdo->query('SELECT * FROM delivery_zones WHERE active=1 ORDER BY fee, name')->fetchAll();
+
 $pageTitle = 'Panier';
 $pageNoindex = true;
 require __DIR__ . '/includes/header.php';
@@ -220,7 +224,7 @@ require __DIR__ . '/includes/header.php';
         </dl>
         <div class="mt-5 pt-5 border-t border-line flex justify-between items-baseline"><span class="font-semibold">Total estimé</span><span class="text-xl font-bold tabular-nums"><?= money($subtotal) ?></span></div>
         <a href="<?= e(url('commande.php')) ?>" class="btn btn-primary w-full mt-6 !min-h-[52px]">Passer la commande <?= icon('arrow-right', 'w-4 h-4') ?></a>
-        <a href="<?= e(whatsapp_url($waMessage)) ?>" target="_blank" rel="noopener" class="btn btn-outline w-full mt-3 !min-h-[52px]"><?= icon('whatsapp', 'w-5 h-5 text-[#1DA851]') ?> Commander sur WhatsApp</a>
+        <button type="button" data-open="wa-order" class="btn btn-outline w-full mt-3 !min-h-[52px]"><?= icon('whatsapp', 'w-5 h-5 text-[#1DA851]') ?> Commander sur WhatsApp</button>
         <ul class="mt-6 space-y-2.5 text-xs text-muted">
           <li class="flex items-center gap-2.5"><?= icon('shield', 'w-4 h-4 text-forest') ?> Paiement sécurisé : Wave, Orange Money, espèces</li>
           <li class="flex items-center gap-2.5"><?= icon('truck', 'w-4 h-4 text-forest') ?> Livraison 24–48 h à Dakar</li>
@@ -230,4 +234,47 @@ require __DIR__ . '/includes/header.php';
     </div>
   <?php endif; ?>
 </main>
+<?php if ($items): ?>
+<!-- Commande WhatsApp : enregistrée dans l'admin (référence, stock réservé), puis envoyée sur WhatsApp. -->
+<div id="wa-order" data-panel class="fixed inset-0 z-[60] is-hidden flex items-end sm:items-center justify-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="wa-order-title"<?= isset($_GET['wa']) ? ' data-autoopen' : '' ?>>
+  <div class="overlay absolute inset-0 bg-ink/50" data-close></div>
+  <form method="post" action="<?= e(url('commande.php')) ?>" class="relative w-full sm:max-w-md max-h-[92vh] overflow-y-auto bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 sm:p-6 fade-up" style="animation-duration:.35s">
+    <?= csrf_field() ?><input type="hidden" name="channel" value="whatsapp">
+    <div class="flex items-start justify-between gap-4">
+      <div>
+        <p id="wa-order-title" class="font-display text-2xl flex items-center gap-2"><span class="text-[#1DA851]"><?= icon('whatsapp', 'w-6 h-6') ?></span> Commander sur WhatsApp</p>
+        <p class="text-sm text-muted mt-1">Vos coordonnées pour préparer la commande. Le message WhatsApp est ensuite rempli automatiquement.</p>
+      </div>
+      <button type="button" class="icon-btn -mr-2 -mt-1 shrink-0" data-close aria-label="Fermer"><?= icon('x', 'w-6 h-6') ?></button>
+    </div>
+    <div class="mt-5 grid grid-cols-2 gap-3">
+      <label class="block"><span class="label">Prénom(s)</span><input name="first_name" required autocomplete="given-name" class="field" placeholder="Ex. Moussa"></label>
+      <label class="block"><span class="label">Nom</span><input name="last_name" required autocomplete="family-name" class="field" placeholder="Ex. Diop"></label>
+      <label class="block col-span-2"><span class="label">Téléphone (WhatsApp)</span><input name="phone" required autocomplete="tel" inputmode="tel" pattern="\+?[0-9\s]{8,20}" class="field" placeholder="77 123 45 67"></label>
+      <label class="block col-span-2"><span class="label">Zone de livraison</span>
+        <span class="relative block">
+          <select name="zone_id" required class="field appearance-none pr-10">
+            <option value="">Choisir une zone</option>
+            <?php foreach ($zones as $zone): ?><option value="<?= (int) $zone['id'] ?>"><?= e($zone['name']) ?> — <?= $remaining === 0 ? 'Offerte' : money((int) $zone['fee']) ?></option><?php endforeach; ?>
+          </select>
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"><?= icon('chevron-down', 'w-4 h-4') ?></span>
+        </span>
+      </label>
+      <label class="block col-span-2"><span class="label">Adresse <span class="font-normal text-muted">(facultatif)</span></span><input name="address" maxlength="255" autocomplete="street-address" class="field" placeholder="Quartier, rue, repère…"></label>
+      <label class="block col-span-2"><span class="label">Paiement</span>
+        <span class="relative block">
+          <select name="payment_method" class="field appearance-none pr-10">
+            <option value="delivery">Espèces à la livraison</option>
+            <option value="wave">Wave</option>
+            <option value="orange">Orange Money</option>
+          </select>
+          <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"><?= icon('chevron-down', 'w-4 h-4') ?></span>
+        </span>
+      </label>
+    </div>
+    <button class="btn w-full mt-5 !min-h-[54px] text-base text-white bg-[#25D366] hover:bg-[#1fb457]"><?= icon('whatsapp') ?> Continuer sur WhatsApp</button>
+    <p class="mt-3 text-xs text-muted text-center">Votre commande reçoit une référence et vos articles sont réservés.</p>
+  </form>
+</div>
+<?php endif; ?>
 <?php require __DIR__ . '/includes/footer.php'; ?>

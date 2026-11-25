@@ -18,6 +18,7 @@ $paid = order_is_paid($order);
 $isWave = $order['payment_method'] === 'wave';
 $isOrange = $order['payment_method'] === 'orange';
 $waUrl = whatsapp_url(order_whatsapp_message($order, $items));
+$autoWhatsapp = isset($_GET['wa']) && ($order['channel'] ?? '') === 'whatsapp';
 
 $pageTitle = $paid ? 'Paiement reçu' : 'Commande enregistrée';
 $pageNoindex = true;
@@ -65,6 +66,7 @@ require __DIR__ . '/includes/header.php';
             <p class="text-sm mt-3">Vous avez choisi le paiement à la livraison : le montant sera à régler au livreur à la réception.</p>
           <?php endif; ?>
           <details class="mt-3 text-sm"><summary class="text-forest font-medium underline underline-offset-4">Voir le message</summary><pre class="mt-3 whitespace-pre-wrap font-sans text-[13px] leading-relaxed bg-cream rounded-lg p-4 border border-line"><?= e(order_whatsapp_message($order, $items)) ?></pre></details>
+          <?php if ($autoWhatsapp): ?><p class="text-sm mt-3 font-medium text-[#1DA851]">Ouverture de WhatsApp… Si rien ne s'ouvre, appuyez sur le bouton ci-dessous.</p><script>(function () { var k = 'wa-sent-<?= e($order['reference']) ?>'; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch (e) {} setTimeout(function () { window.location.href = <?= json_encode($waUrl, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>; }, 700); })();</script><?php endif; ?>
           <a href="<?= e($waUrl) ?>" target="_blank" rel="noopener" class="btn w-full mt-5 !min-h-[54px] text-base text-white bg-[#25D366] hover:bg-[#1fb457]"><?= icon('whatsapp') ?> Envoyer ma commande sur WhatsApp</a>
         </div>
       </div>

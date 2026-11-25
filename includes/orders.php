@@ -88,6 +88,24 @@ function order_item_ready_text(array $item): string
     return !empty($item['ready_date']) ? 'Sur commande · prêt le ' . date_fr((string) $item['ready_date']) : '';
 }
 
+/** Ajoute la colonne « channel » (site / WhatsApp) aux bases installées avant cette fonctionnalité. */
+function orders_channel_ensure(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (!$pdo->query("SHOW COLUMNS FROM orders LIKE 'channel'")->fetch()) {
+        $pdo->exec("ALTER TABLE orders ADD COLUMN channel ENUM('site','whatsapp') NOT NULL DEFAULT 'site' AFTER payment_method");
+    }
+}
+
+/** Petit badge « WhatsApp » pour les commandes passées via le bouton WhatsApp. */
+function order_channel_badge(array $order): string
+{
+    if (($order['channel'] ?? 'site') !== 'whatsapp') return '';
+    return '<span class="inline-flex items-center gap-1 rounded-full bg-[#25D366]/10 text-[#1DA851] px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap">' . icon('whatsapp', 'w-3 h-3') . ' WhatsApp</span>';
+}
+
 function payment_label(string $method): string
 {
     return ['wave' => 'Wave', 'orange' => 'Orange Money', 'delivery' => 'Espèces à la livraison'][$method] ?? $method;

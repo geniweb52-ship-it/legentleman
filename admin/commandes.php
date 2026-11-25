@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/ui.php';
 require_once dirname(__DIR__) . '/includes/orders.php';
+orders_channel_ensure($pdo);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     admin_post_guard();
@@ -96,7 +97,7 @@ if ($order) {
       <div class="space-y-5">
         <?= card_open() ?>
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-3"><?= status_badge((string) $order['status']) ?><?php if ($order['paid_at']): ?><span class="text-xs font-semibold text-forest inline-flex items-center gap-1"><?= icon('check', 'w-3.5 h-3.5') ?> Payée le <?= e(date('d/m à H:i', strtotime((string) $order['paid_at']))) ?></span><?php else: ?><span class="text-xs text-muted">Non payée</span><?php endif; ?></div>
+            <div class="flex items-center gap-3 flex-wrap"><?= status_badge((string) $order['status']) ?><?= order_channel_badge($order) ?><?php if ($order['paid_at']): ?><span class="text-xs font-semibold text-forest inline-flex items-center gap-1"><?= icon('check', 'w-3.5 h-3.5') ?> Payée le <?= e(date('d/m à H:i', strtotime((string) $order['paid_at']))) ?></span><?php else: ?><span class="text-xs text-muted">Non payée</span><?php endif; ?></div>
             <form method="post" class="flex gap-2"><?= csrf_field() ?><input type="hidden" name="ref" value="<?= e($order['reference']) ?>">
               <select name="status" class="field !w-auto !h-10 text-sm"><?php foreach (ORDER_STATUSES as $k => [$l]): ?><option value="<?= $k ?>" <?= $order['status'] === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select>
               <button class="btn btn-primary btn-sm !h-10">Mettre à jour</button>
@@ -225,7 +226,7 @@ foreach (ORDER_STATUSES as $k => [$l]) $tabs[$k] = [$l, $byStatus[$k] ?? 0];
               <td class="text-muted"><?= (int) $o['items'] ?></td>
               <td class="font-semibold tabular-nums whitespace-nowrap"><?= fcfa((int) $o['total']) ?></td>
               <td class="whitespace-nowrap text-xs"><?= e(payment_label((string) $o['payment_method'])) ?><br><span class="<?= $o['paid_at'] ? 'text-forest font-semibold' : 'text-muted' ?>"><?= $o['paid_at'] ? 'Payée' : 'En attente' ?></span></td>
-              <td class="!pr-5 sm:!pr-6"><?= status_badge((string) $o['status']) ?></td>
+              <td class="!pr-5 sm:!pr-6"><div class="flex flex-col items-start gap-1"><?= status_badge((string) $o['status']) ?><?= order_channel_badge($o) ?></div></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
