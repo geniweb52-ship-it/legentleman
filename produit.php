@@ -84,7 +84,7 @@ if (count($related) < 4) {
 $categoryCrumb = $product['category_name'] ? [[$product['category_name'], url('boutique.php?cat[]=' . rawurlencode((string) $product['category_slug']))]] : [];
 $pageTitle = $product['name'];
 $pageDescription = mb_substr(implode(' ', $paragraphs) ?: $product['name'], 0, 155);
-$pageImage = $images[0] ?? null;
+$pageImage = isset($images[0]) ? image_normalize($images[0]) : null;
 $productUrl = site_url('produit.php?id=' . $id);
 $buyUrl = site_url('acheter.php?id=' . $id);
 $hasStickyBar = true;

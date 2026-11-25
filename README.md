@@ -12,6 +12,10 @@ Boutique en ligne de mode masculine (PHP + MySQL + Tailwind CSS) : catalogue, pa
    - `BASE_URL` (`/gentleman` en local, `''` si le site est à la racine du domaine) ;
    - les paramètres WhatsApp et Wave.
 4. Styles : `npm install` puis `npm run build:css` (après toute modification de classes Tailwind).
+5. Rendre `assets/uploads/` accessible en écriture (photos ajoutées depuis l'admin).
+
+Les chemins d'images enregistrés en base (ex. `/gentleman/assets/uploads/…` venant de l'installation locale)
+sont recalculés automatiquement avec le `BASE_URL` du serveur : aucune modification de la base n'est nécessaire.
 
 ## Administration
 

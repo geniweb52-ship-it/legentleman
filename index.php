@@ -3,10 +3,17 @@ require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/helpers.php';
 
 $products = $pdo->query("SELECT p.*, c.name AS category_name, " . PRODUCT_STOCK_SQL . " stock_total FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.active=1 AND p.is_gift_box=0 ORDER BY p.created_at DESC LIMIT 8")->fetchAll();
-$categories = $pdo->query("SELECT c.name, c.slug,
+// Image de la catégorie (choisie dans l'admin), sinon la photo du dernier produit ajouté.
+// Les catégories encore vides restent visibles si elles ont une image (« Bientôt disponible »).
+$categories = $pdo->query("SELECT c.name, c.slug, c.image cover,
     (SELECT p.image FROM products p WHERE p.category_id=c.id AND p.active=1 AND p.image IS NOT NULL AND p.image<>'' ORDER BY p.created_at DESC LIMIT 1) image,
     (SELECT COUNT(*) FROM products p WHERE p.category_id=c.id AND p.active=1) total
-    FROM categories c WHERE c.slug<>'tous' HAVING total > 0 ORDER BY c.sort_order")->fetchAll();
+    FROM categories c WHERE c.slug<>'tous' HAVING total > 0 OR cover IS NOT NULL ORDER BY c.sort_order")->fetchAll();
+foreach ($categories as &$cat) {
+    if (!empty($cat['cover'])) $cat['image'] = url($cat['cover']);
+}
+unset($cat);
+$catCols = count($categories) > 6 ? (int) ceil(count($categories) / 2) : count($categories);
 $giftImage = $pdo->query("SELECT p.image FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.active=1 AND (p.is_gift_box=1 OR c.slug='coffrets') AND p.image IS NOT NULL AND p.image<>'' ORDER BY p.created_at DESC LIMIT 1")->fetchColumn();
 
 $heroImage = null;
@@ -88,19 +95,19 @@ if ($holiday && $holiday['image'] !== '') $heroImage = $holiday['image'];
       <h2 class="font-display text-3xl sm:text-4xl">Nos catégories</h2>
       <a href="<?= e(url('boutique.php')) ?>" class="group text-sm font-semibold inline-flex items-center gap-1.5">Voir tout <span class="transition-transform group-hover:translate-x-1"><?= icon('arrow-right', 'w-4 h-4') ?></span></a>
     </div>
-    <div class="flex lg:grid lg:grid-cols-<?= min(6, count($categories)) ?> gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-none -mx-4 px-4 lg:mx-0 lg:px-0 pb-2">
+    <div class="flex lg:grid lg:grid-cols-<?= min(6, max(1, $catCols)) ?> gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-none -mx-4 px-4 lg:mx-0 lg:px-0 pb-2">
       <?php foreach ($categories as $cat): ?>
         <a href="<?= e(url('boutique.php?cat[]=' . rawurlencode($cat['slug']))) ?>" class="reveal group snap-start shrink-0 w-[42%] sm:w-[30%] lg:w-auto">
           <div class="relative aspect-square rounded-xl overflow-hidden bg-[#EDE7DC]">
             <?php if ($cat['image']): ?>
-              <img src="<?= e(image_url($cat['image'], 400)) ?>" alt="" loading="lazy" class="w-full h-full object-cover transition duration-700 group-hover:scale-[1.06]">
+              <img src="<?= e(image_url($cat['image'], 400)) ?>" alt="<?= e($cat['name']) ?>" loading="lazy" class="w-full h-full object-cover object-top transition duration-700 group-hover:scale-[1.06]">
             <?php else: ?>
               <?= placeholder() ?>
             <?php endif; ?>
             <div class="absolute inset-0 bg-ink/0 group-hover:bg-ink/10 transition-colors"></div>
           </div>
           <p class="mt-3 text-center text-sm font-semibold group-hover:text-forest transition-colors"><?= e($cat['name']) ?></p>
-          <p class="text-center text-xs text-muted"><?= (int) $cat['total'] ?> article<?= (int) $cat['total'] > 1 ? 's' : '' ?></p>
+          <p class="text-center text-xs text-muted"><?= (int) $cat['total'] ? (int) $cat['total'] . ' article' . ((int) $cat['total'] > 1 ? 's' : '') : 'Bientôt disponible' ?></p>
         </a>
       <?php endforeach; ?>
     </div>

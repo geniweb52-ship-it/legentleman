@@ -74,10 +74,25 @@ function image_optimize(string $source, string $destNoExt, int $maxSide = IMAGE_
     return $destNoExt . '.webp';
 }
 
+/**
+ * Adresse d'une image du site, recalculée avec le BASE_URL actuel.
+ * Les chemins enregistrés en base peuvent contenir un ancien dossier (ex. « /gentleman/assets/uploads/x.webp »
+ * créé en local) ou être relatifs (« assets/img/… ») : tout ce qui précède « assets/ » est remplacé,
+ * pour que les photos s'affichent aussi une fois le site installé à la racine d'un domaine.
+ */
+function image_normalize(?string $url): string
+{
+    $url = (string) $url;
+    if ($url === '' || preg_match('~^([a-z][a-z0-9+.-]*:|//)~i', $url)) return $url; // adresse externe ou data:
+    $pos = strpos($url, 'assets/');
+    return $pos === false ? $url : url(substr($url, $pos));
+}
+
 /** Chemin disque d'une URL locale du site (ou null si externe). */
 function image_local_path(?string $url): ?string
 {
-    if (!$url) return null;
+    $url = image_normalize($url);
+    if ($url === '') return null;
     $base = rtrim(BASE_URL, '/') . '/';
     if (!str_starts_with($url, $base)) return null;
     return dirname(__DIR__) . '/' . substr(strtok($url, '?'), strlen($base));
@@ -86,7 +101,7 @@ function image_local_path(?string $url): ?string
 /** URL de la déclinaison la plus proche de $width (ou l'image d'origine). */
 function image_url(?string $url, int $width): string
 {
-    $url = (string) $url;
+    $url = image_normalize($url);
     $path = image_local_path($url);
     if ($path && str_ends_with($path, '.webp')) {
         foreach (IMAGE_WIDTHS as $w) {
@@ -99,6 +114,7 @@ function image_url(?string $url, int $width): string
 /** Attribut srcset pour une image optimisée (chaîne vide sinon). */
 function image_srcset(?string $url): string
 {
+    $url = image_normalize($url);
     $path = image_local_path($url);
     if (!$path || !str_ends_with($path, '.webp') || !is_file($path)) return '';
     $set = [];
@@ -115,7 +131,7 @@ function image_srcset(?string $url): string
 function responsive_img(?string $url, string $alt, string $class, string $sizes = '100vw', bool $lazy = true, string $extra = ''): string
 {
     $srcset = image_srcset($url);
-    return '<img src="' . e($srcset ? image_url($url, 800) : (string) $url) . '"'
+    return '<img src="' . e($srcset ? image_url($url, 800) : image_normalize($url)) . '"'
         . ($srcset ? ' srcset="' . e($srcset) . '" sizes="' . e($sizes) . '"' : '')
         . ' alt="' . e($alt) . '" class="' . e($class) . '"' . ($lazy ? ' loading="lazy" decoding="async"' : ' decoding="async"') . ($extra ? ' ' . $extra : '') . '>';
 }
