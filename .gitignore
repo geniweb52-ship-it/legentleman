@@ -1,0 +1,12 @@
+# Configuration locale : contient la clé secrète et les accès (copier config.example.php)
+config.php
+
+# Dépendances (réinstaller avec : npm install)
+node_modules/
+
+# Fichiers système / éditeur
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

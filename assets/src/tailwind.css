@@ -1,0 +1,5 @@
+/* Boutique : base Tailwind, composants maison, puis utilitaires (qui gardent le dernier mot). */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "./shop.css";
+@import "tailwindcss/utilities";

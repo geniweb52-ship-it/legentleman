@@ -1,0 +1,15 @@
+{
+  "name": "le-gentleman",
+  "private": true,
+  "description": "Compilation des styles de la boutique LE GENTLEMAN",
+  "scripts": {
+    "build:css": "npm run build:shop && npm run build:admin",
+    "build:shop": "tailwindcss -c tailwind.config.js -i assets/src/tailwind.css -o assets/app.css --minify",
+    "build:admin": "tailwindcss -c tailwind.config.js -i assets/src/admin.css -o assets/admin.css --minify",
+    "watch:shop": "tailwindcss -c tailwind.config.js -i assets/src/tailwind.css -o assets/app.css --watch",
+    "watch:admin": "tailwindcss -c tailwind.config.js -i assets/src/admin.css -o assets/admin.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

@@ -1,0 +1,22 @@
+    body { -webkit-font-smoothing: antialiased; }
+    .field { width:100%; height:2.75rem; border:1px solid #E7E1D6; border-radius:.6rem; padding:0 .9rem; background:#fff; font-size:.9rem; transition:border-color .2s, box-shadow .2s; }
+    textarea.field { height:auto; padding:.7rem .9rem; }
+    .field:focus { outline:none; border-color:#2E4A36; box-shadow:0 0 0 3px rgba(46,74,54,.12); }
+    .label { display:block; font-size:.8rem; font-weight:600; margin-bottom:.35rem; color:#3b3a36; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; height:2.75rem; padding:0 1.1rem; border-radius:.6rem; font-weight:600; font-size:.875rem; transition:all .2s; white-space:nowrap; cursor:pointer; }
+    .btn-primary { background:#2E4A36; color:#fff; } .btn-primary:hover { background:#233A2A; }
+    .btn-outline { border:1px solid #E7E1D6; background:#fff; } .btn-outline:hover { border-color:#1D1D1B; }
+    .btn-danger { border:1px solid #f1d5cb; color:#B4532A; background:#fff; } .btn-danger:hover { background:#B4532A; color:#fff; }
+    .btn-sm { height:2.25rem; padding:0 .8rem; font-size:.8rem; }
+    .nav-item { position:relative; display:flex; align-items:center; gap:.9rem; height:2.9rem; padding:0 1rem; border-radius:.75rem; color:rgba(255,255,255,.82); font-size:.92rem; font-weight:500; transition:background-color .2s, color .2s; }
+    .nav-item:hover { background:rgba(255,255,255,.06); color:#fff; }
+    .nav-item.active { background:rgba(255,255,255,.12); color:#fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+    .nav-item.active::before { content:""; position:absolute; left:-.75rem; top:.6rem; bottom:.6rem; width:3px; border-radius:3px; background:#C8A24A; }
+    details > summary { list-style:none; cursor:pointer; } details > summary::-webkit-details-marker { display:none; }
+    .tbl th { font-size:.75rem; font-weight:600; color:#6E6A62; text-align:left; padding:.7rem .9rem; background:#FAF8F3; white-space:nowrap; }
+    .tbl td { padding:.85rem .9rem; border-top:1px solid #F0EBE2; font-size:.875rem; vertical-align:middle; }
+    .tbl tr:hover td { background:#FCFBF8; }
+    .chart-pt:hover circle { r: 7; }
+    .fade-in { animation: fadeIn .45s ease both; } @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+    .toast { transition: transform .3s, opacity .3s; }
+    .sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.15) transparent; }

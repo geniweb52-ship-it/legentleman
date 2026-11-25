@@ -1,0 +1,11 @@
+# Fichiers internes au projet : jamais accessibles depuis le navigateur.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(sql|node_modules|includes|assets/src)(/|$) - [F,L]
+</IfModule>
+
+<FilesMatch "^(package(-lock)?\.json|tailwind\.config\.js|composer\.(json|lock)|\.env.*|.*\.(sql|md|log|bak))$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,5 @@
+/* Administration */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "./admin-ui.css";
+@import "tailwindcss/utilities";
