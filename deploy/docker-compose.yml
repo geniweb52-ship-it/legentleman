@@ -1,0 +1,35 @@
+# LE GENTLEMAN : site PHP + MySQL. Aucun port publié : seul Caddy (lokky-caddy-1) le joint par le réseau legentleman_edge.
+name: legentleman
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    volumes:
+      - ./app:/var/www/html
+    networks:
+      default: {}
+      edge:
+        aliases: [legentleman-web]
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      MYSQL_DATABASE: le_gentleman
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./app/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      retries: 30
+    logging: { driver: json-file, options: { max-size: 10m, max-file: "3" } }
+networks:
+  edge:
+    name: legentleman_edge
+    external: true
+volumes:
+  db-data:

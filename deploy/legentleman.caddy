@@ -1,0 +1,16 @@
+# LE GENTLEMAN (boutique PHP) : conteneur legentleman-web, projet /opt/legentleman.
+legentleman.shop {
+	encode zstd gzip
+	request_body {
+		max_size 40MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy legentleman-web:80
+}
+
+www.legentleman.shop {
+	redir https://legentleman.shop{uri} permanent
+}

@@ -1,188 +1,157 @@
-# Déploiement sur le VPS (Ubuntu / Debian, Caddy existant)
+# Déploiement — LE GENTLEMAN sur le VPS
 
-Serveur : `54.37.137.215` · domaine : `legentleman.shop`.
-Caddy sert déjà d'autres projets sur ce VPS (ekolys, lokky) : on **ajoute** un bloc au Caddyfile, sans toucher aux autres,
-et on n'installe **pas** Apache (il entrerait en conflit avec Caddy sur les ports 80/443).
+Site : **https://legentleman.shop** · VPS : `54.37.137.215` (Ubuntu, utilisateur `ubuntu`) · code : branche `main`.
 
-⚠️ Caddy ne lit pas les fichiers `.htaccess` : les protections (`.git`, `config.php`, `sql/`, `includes/`,
-scripts dans `assets/uploads`…) sont reprises dans le bloc Caddy de l'étape 5. Ne pas les retirer.
+## Comment c'est installé
 
-Prérequis DNS (chez Hostinger) : uniquement `A @ → 54.37.137.215` et `CNAME www → legentleman.shop`.
-Vérifier avec `dig +short legentleman.shop @8.8.8.8` : une seule ligne, `54.37.137.215`.
+Le VPS héberge aussi **lokky** et **ekolys**. Le site ne touche pas à leurs conteneurs : il tourne dans les siens,
+et seul le Caddy commun le relie à Internet.
 
-## 0. Comment Caddy tourne sur ce VPS ?
+```
+Internet ─► lokky-caddy-1 (ports 80/443, https automatique)
+               │  /opt/caddy-sites/legentleman.caddy
+               │  réseau Docker « legentleman_edge »
+               ▼
+            legentleman-web (PHP 8.3 + Apache, lit les .htaccess) ──► legentleman-db (MySQL 8)
+```
+
+| Élément | Emplacement sur le VPS | Modèle dans le dépôt |
+|---|---|---|
+| Code du site (clone git de `main`) | `/opt/legentleman/app` | — |
+| Conteneurs PHP + MySQL | `/opt/legentleman/docker-compose.yml`, `Dockerfile` | `deploy/` |
+| Secrets MySQL (générés sur le serveur) | `/opt/legentleman/.env` (lisible par `ubuntu` seul) | — |
+| Configuration du site | `/opt/legentleman/app/config.php` (jamais dans git) | `config.example.php` |
+| Bloc Caddy | `/opt/caddy-sites/legentleman.caddy` | `deploy/legentleman.caddy` |
+| Mise à jour automatique | `/opt/legentleman/auto-update.sh` + crontab `ubuntu` | `deploy/auto-update.sh` |
+| Base de données | volume Docker `legentleman_db-data` | `sql/schema.sql` |
+
+Les protections (`.git`, `config.php`, `sql/`, `includes/`, `deploy/`, scripts dans `assets/uploads`…) viennent des
+fichiers `.htaccess`, appliqués par Apache dans le conteneur. `robots.txt` et `sitemap.xml` passent aussi par le `.htaccess`.
+
+## Mettre le site à jour
+
+**Il suffit de pousser sur `main`** : le VPS vérifie GitHub toutes les 2 minutes et récupère les nouveaux commits
+(PHP, CSS, JS, images : visibles tout de suite, sans redémarrage).
 
 ```bash
-systemctl status caddy --no-pager | head -3      # « active (running) » -> Caddy installé sur le système : suivre ce guide
-docker ps --format '{{.Names}} {{.Image}}' | grep -i caddy   # une ligne -> Caddy est dans Docker : voir l'annexe en bas
+ssh 54.37.137.215 "tail /opt/legentleman/auto-update.log"          # historique des mises à jour
+ssh 54.37.137.215 "/opt/legentleman/auto-update.sh"                 # forcer une mise à jour maintenant
 ```
 
-## 1. PHP-FPM et MySQL
+- Si la mise à jour est impossible (historique réécrit par un `push --force`, fichier modifié sur le serveur),
+  le site reste sur la version précédente et l'erreur est notée **une fois** dans le journal.
+- **Base de données** : jamais modifiée automatiquement. Si un commit change `sql/`, le journal le signale ;
+  lancer alors la migration à la main (voir « Base de données »).
+- **Fichiers de `deploy/`** : ce sont des modèles. Après une modification, les recopier sur le VPS
+  (`/opt/legentleman/` ou `/opt/caddy-sites/`) puis appliquer (voir plus bas).
+
+## Commandes utiles
 
 ```bash
-ssh <utilisateur>@54.37.137.215
-sudo apt update
-sudo apt install -y git mysql-server \
-  php-fpm php-mysql php-gd php-curl php-mbstring php-xml php-exif
-# (si MySQL tourne déjà sur le VPS pour un autre projet, apt le laisse en place)
+ssh 54.37.137.215
+cd /opt/legentleman
 
-PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;'); echo "PHP $PHPV"    # 8.1 minimum
-php -m | grep -Ei 'pdo_mysql|gd|curl|mbstring|exif'
-ls /run/php/                       # repérer le socket, ex. php8.3-fpm.sock
+docker compose ps                                 # état des conteneurs
+docker compose logs --tail 50 web                 # erreurs PHP / Apache
+docker compose restart web                        # redémarrer le site
+docker compose up -d --build                      # après une modification de Dockerfile / docker-compose.yml
+
+# Mot de passe admin oublié (10 caractères minimum)
+docker compose exec web php sql/reset-admin.php admin@legentleman.sn 'NouveauMotDePasse'
+
+# Console MySQL
+docker compose exec db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" le_gentleman'
 ```
 
-Réglages PHP (photos envoyées depuis l'admin, 15 Mo maximum côté site) :
+## Base de données
 
 ```bash
-printf "upload_max_filesize = 16M\npost_max_size = 40M\nmemory_limit = 512M\nexpose_php = Off\ndisplay_errors = Off\nlog_errors = On\n" \
-  | sudo tee /etc/php/$PHPV/fpm/conf.d/99-legentleman.ini
-sudo systemctl restart php$PHPV-fpm
+cd /opt/legentleman
+
+# Sauvegarde
+mkdir -p backups
+docker compose exec -T db sh -c 'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction le_gentleman' \
+  > backups/le_gentleman-$(date +%F-%H%M).sql
+
+# Lancer une migration (fichier envoyé sur le serveur ou présent dans app/sql/)
+docker compose exec -T db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" --default-character-set=utf8mb4 le_gentleman' \
+  < app/sql/migration-XXXX.sql
 ```
 
-## 2. Code du site
+Sauvegarde automatique chaque nuit, 14 jours conservés (à installer une fois) :
 
 ```bash
-sudo git clone https://github.com/geniweb52-ship-it/legentleman.git /var/www/legentleman
-# Dépôt privé : jeton GitHub (Settings > Developer settings > Personal access tokens) ou clé SSH de déploiement.
-
-cd /var/www/legentleman
-sudo chown -R www-data:www-data assets/uploads
+( crontab -l; echo '30 3 * * * cd /opt/legentleman && docker compose exec -T db sh -c '"'"'mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction le_gentleman'"'"' | gzip > backups/auto-$(date +\%F).sql.gz && find backups -name "auto-*" -mtime +14 -delete' ) | crontab -
 ```
 
-`assets/app.css` et `assets/admin.css` sont déjà compilés dans le dépôt : Node.js n'est pas nécessaire.
+**Importer un export phpMyAdmin** (ex. depuis WAMP) : l'export recrée toutes les tables, y compris `admins`.
+Faire d'abord une sauvegarde, puis encadrer le fichier par `SET FOREIGN_KEY_CHECKS=0;` / `SET FOREIGN_KEY_CHECKS=1;`
+(sinon l'import s'arrête en cours de route sur une erreur de clé étrangère) et retirer la table `admins`
+pour garder le compte en ligne.
 
-## 3. Base de données
+## Caddy (partagé avec lokky et ekolys)
+
+Le conteneur `lokky-caddy-1` appartient au projet lokky (`/opt/lokky`). Il lit tous les fichiers `/opt/caddy-sites/*.caddy`
+et il est relié au réseau `legentleman_edge` : ce réseau est déclaré dans `deploy/docker-compose.yml` **du dépôt lokky**,
+sinon un redéploiement de lokky recréerait Caddy sans lui (legentleman.shop afficherait une erreur 502).
+
+Modifier le bloc Caddy du site sans couper les autres sites :
 
 ```bash
-sudo mysql
+nano /opt/caddy-sites/legentleman.caddy
+docker exec lokky-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile   # « Valid configuration »
+docker exec lokky-caddy-1 caddy reload   --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
-```sql
-CREATE DATABASE le_gentleman CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'gentleman'@'localhost' IDENTIFIED BY '<MOT_DE_PASSE_BDD_LONG>';
-GRANT ALL PRIVILEGES ON le_gentleman.* TO 'gentleman'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-```
+Les certificats https de `legentleman.shop` et `www.legentleman.shop` sont obtenus et renouvelés par Caddy.
+
+## DNS (Hostinger)
+
+Zone de `legentleman.shop` : uniquement `A @ → 54.37.137.215` et `CNAME www → legentleman.shop` (TTL 300 conseillé).
+Vérification : `nslookup legentleman.shop 8.8.8.8` doit répondre `54.37.137.215` seulement.
+
+## Réinstaller de zéro (nouveau serveur)
+
+Prérequis : Docker, et un Caddy en conteneur qui importe `/opt/caddy-sites/*.caddy` (ici celui de lokky).
 
 ```bash
-# Nouvelle installation : schema.sql seul (il contient déjà toutes les migrations).
-sudo mysql le_gentleman < /var/www/legentleman/sql/schema.sql
+sudo mkdir -p /opt/legentleman && sudo chown ubuntu:ubuntu /opt/legentleman && cd /opt/legentleman
+git clone -q https://github.com/geniweb52-ship-it/legentleman.git app
+cp app/deploy/Dockerfile app/deploy/docker-compose.yml app/deploy/setup.sh app/deploy/auto-update.sh .
+sh setup.sh                     # secrets, config.php, droits des photos, réseau legentleman_edge
+docker compose up -d --build    # la base est créée à partir de sql/schema.sql au premier démarrage
+
+# Compte admin (mot de passe aléatoire, enregistré dans un fichier lisible par ubuntu seul)
+umask 077; docker compose exec -T web php sql/reset-admin.php admin@legentleman.sn "$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-16)" > admin-identifiants.txt
+
+# Caddy
+cp app/deploy/legentleman.caddy /opt/caddy-sites/
+docker network connect legentleman_edge lokky-caddy-1
+docker exec lokky-caddy-1 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+docker exec lokky-caddy-1 caddy reload   --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# Mise à jour automatique
+( crontab -l 2>/dev/null; echo '*/2 * * * * /bin/sh /opt/legentleman/auto-update.sh >> /opt/legentleman/auto-update.log 2>&1' ) | crontab -
 ```
 
-Pour reprendre les produits et commandes de l'installation locale : exporter la base depuis WAMP
-(phpMyAdmin > Exporter), l'envoyer avec `scp le_gentleman.sql <utilisateur>@54.37.137.215:~`
-puis `sudo mysql le_gentleman < ~/le_gentleman.sql` (à la place de schema.sql).
-Les chemins d'images `/gentleman/...` sont recalculés automatiquement.
+Après l'installation : se connecter à `/admin/` avec `admin-identifiants.txt`, changer le mot de passe
+(Admin → Paramètres) puis supprimer ce fichier.
 
-## 4. Configuration
-
-```bash
-cd /var/www/legentleman
-sudo cp config.example.php config.php
-php -r "echo bin2hex(random_bytes(24)), PHP_EOL;"     # copier la clé affichée
-sudo nano config.php
-```
-
-```php
-const DB_USER = 'gentleman';
-const DB_PASS = '<MOT_DE_PASSE_BDD_LONG>';
-const BASE_URL = '';                               // site à la racine du domaine
-const SITE_URL = 'https://legentleman.shop';       // obligatoire en production (liens de facture, Wave)
-const APP_SECRET = '<CLÉ_GÉNÉRÉE_CI-DESSUS>';      // ne plus jamais la changer ensuite
-const SHOP_TIKTOK = 'https://www.tiktok.com/@legentleman395';  // lien TikTok du pied de page (si absent : lien masqué)
-```
-
-```bash
-sudo chown root:www-data config.php && sudo chmod 640 config.php
-
-# Compte administrateur : remplace le mot de passe par défaut de schema.sql (10 caractères minimum).
-sudo -u www-data php sql/reset-admin.php admin@legentleman.sn '<MOT_DE_PASSE_ADMIN>'
-```
-
-## 5. Caddy
-
-```bash
-sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak-$(date +%F)     # sauvegarde avant modification
-sudo nano /etc/caddy/Caddyfile
-```
-
-Ajouter à la fin (s'il existe déjà un bloc `legentleman.shop`, le **remplacer** par celui-ci ;
-ne pas toucher aux blocs d'ekolys et lokky). Adapter `php8.3-fpm.sock` au socket vu à l'étape 1.
-
-```caddy
-www.legentleman.shop {
-	redir https://legentleman.shop{uri} permanent
-}
-
-legentleman.shop {
-	root * /var/www/legentleman
-	encode zstd gzip
-
-	# Équivalent des .htaccess : fichiers internes jamais servis.
-	@interne {
-		path /.git /.git/* *.gitignore *.htaccess /.env*
-		path /sql /sql/* /includes /includes/* /node_modules /node_modules/* /assets/src /assets/src/*
-		path /config.php /config.example.php /package.json /package-lock.json /tailwind.config.js /composer.*
-		path *.sql *.md *.log *.bak
-	}
-	respond @interne 404
-
-	# Dossier des photos envoyées : aucun script exécutable.
-	@scripts_uploads path_regexp (?i)^/assets/uploads/.*\.(php|phtml|phar|pl|py|cgi|sh)$
-	respond @scripts_uploads 404
-
-	request_body {
-		max_size 40MB
-	}
-
-	header {
-		-Server
-		Strict-Transport-Security "max-age=31536000"
-	}
-
-	# Référencement Google : robots.txt et sitemap.xml sont générés en PHP (équivalent des règles du .htaccess).
-	rewrite /robots.txt /robots.php
-	rewrite /sitemap.xml /sitemap.php
-
-	php_fastcgi unix//run/php/php8.3-fpm.sock {
-		try_files {path} {path}/index.php =404
-	}
-	file_server
-
-	log {
-		output file /var/log/caddy/legentleman.log
-	}
-}
-```
-
-```bash
-sudo caddy fmt --overwrite /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile      # doit finir par « Valid configuration »
-sudo systemctl reload caddy                             # reload : ekolys et lokky ne sont pas coupés
-```
-
-Caddy obtient le certificat https tout seul (Let's Encrypt) dès que le DNS pointe uniquement vers le VPS.
-Suivre l'obtention : `sudo journalctl -u caddy -f` (chercher « certificate obtained successfully »).
-
-## 6. Vérifications
+## Vérifications
 
 ```bash
 curl -I https://legentleman.shop/                      # 200
 curl -I https://www.legentleman.shop/                  # 301 vers https://legentleman.shop/
 curl -I https://legentleman.shop/admin/                # 302 vers login.php
-curl -I https://legentleman.shop/config.php            # 404
-curl -I https://legentleman.shop/sql/schema.sql        # 404
-curl -I https://legentleman.shop/.git/config           # 404
-curl -I https://legentleman.shop/includes/db.php       # 404
-curl -s https://legentleman.shop/robots.txt            # liste « Disallow » + ligne « Sitemap: https://legentleman.shop/sitemap.xml »
-curl -s https://legentleman.shop/sitemap.xml | head -4 # XML commençant par <urlset>, adresses en https://legentleman.shop/
-sudo tail -n 50 /var/log/php$PHPV-fpm.log
+curl -I https://legentleman.shop/config.php            # 403
+curl -I https://legentleman.shop/sql/schema.sql        # 403
+curl -I https://legentleman.shop/.git/config           # 403
+curl -I https://legentleman.shop/deploy/setup.sh       # 403
+curl -s https://legentleman.shop/robots.txt            # « Disallow » + « Sitemap: https://legentleman.shop/sitemap.xml »
+curl -s https://legentleman.shop/sitemap.xml | head -4 # XML <urlset>, adresses en https://legentleman.shop/
 ```
 
-Puis dans le navigateur : passer une commande test, ouvrir `/admin/`, envoyer une photo produit.
-
-## 7. Google (après la mise en ligne)
+## Google (après la mise en ligne)
 
 1. [Google Search Console](https://search.google.com/search-console) : ajouter la propriété **Domaine** `legentleman.shop`
    et la valider avec l'enregistrement TXT fourni par Google (à ajouter dans la zone DNS chez Hostinger).
@@ -191,33 +160,3 @@ Puis dans le navigateur : passer une commande test, ouvrir `/admin/`, envoyer un
 
 Le titre, la description, l'icône (48/96/192 px), les données structurées (boutique, produits avec prix en FCFA)
 et les balises de partage (WhatsApp, Facebook) sont déjà en place dans le code.
-
-## Mises à jour du site
-
-```bash
-cd /var/www/legentleman && sudo git pull
-```
-
-`config.php` et les photos envoyées depuis l'admin ne sont pas touchés par `git pull`.
-
-## Sauvegarde quotidienne de la base (conseillé)
-
-```bash
-sudo mkdir -p /var/backups/legentleman
-echo '30 3 * * * root mysqldump le_gentleman | gzip > /var/backups/legentleman/db-$(date +\%F).sql.gz && find /var/backups/legentleman -mtime +14 -delete' \
-  | sudo tee /etc/cron.d/legentleman-backup
-```
-
-## Annexe : Caddy dans Docker
-
-Si l'étape 0 montre Caddy dans un conteneur, il ne voit ni `/var/www/legentleman` ni le socket PHP de la machine.
-Dans le `docker-compose.yml` qui lance Caddy, ajouter ces volumes au service Caddy puis `docker compose up -d` :
-
-```yaml
-    volumes:
-      - /var/www/legentleman:/var/www/legentleman:ro
-      - /run/php:/run/php
-```
-
-Le bloc Caddy de l'étape 5 reste identique (à mettre dans le Caddyfile monté dans le conteneur), et le rechargement
-se fait avec `docker exec <conteneur_caddy> caddy reload --config /etc/caddy/Caddyfile`.
