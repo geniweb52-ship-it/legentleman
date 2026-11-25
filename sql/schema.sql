@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS categories (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   slug VARCHAR(120) NOT NULL UNIQUE,
+  image VARCHAR(255) NULL,
   sort_order INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB;
 
@@ -161,9 +162,36 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   FOREIGN KEY (campaign_id) REFERENCES qr_campaigns(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
-INSERT IGNORE INTO categories (name,slug,sort_order) VALUES
- ('Tous','tous',0),('Hauts','hauts',1),('Bas','bas',2),('Shorts','shorts',3),
- ('Chaussures','chaussures',4),('Coffrets','coffrets',5),('Maillots','maillots',6);
+CREATE TABLE IF NOT EXISTS settings (
+  name VARCHAR(60) PRIMARY KEY,
+  value TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS holiday_themes (
+  theme_key VARCHAR(40) PRIMARY KEY,
+  banner VARCHAR(255) NULL,
+  title VARCHAR(160) NULL,
+  text VARCHAR(500) NULL,
+  cta_label VARCHAR(60) NULL,
+  cta_url VARCHAR(255) NULL,
+  image VARCHAR(255) NULL,
+  start_date DATE NULL,
+  end_date DATE NULL,
+  auto_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  effect_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO categories (name,slug,image,sort_order) VALUES
+ ('Tous','tous',NULL,0),
+ ('Hauts','hauts','assets/img/categories/hauts.webp',1),
+ ('Tenues traditionnelles','tenues-traditionnelles','assets/img/categories/tenues-traditionnelles.webp',2),
+ ('Bas','bas','assets/img/categories/bas.webp',3),
+ ('Shorts','shorts','assets/img/categories/shorts.webp',4),
+ ('Chaussures','chaussures','assets/img/categories/chaussures.webp',5),
+ ('Accessoires','accessoires','assets/img/categories/accessoires.webp',6),
+ ('Coffrets','coffrets','assets/img/categories/coffrets.webp',7),
+ ('Maillots','maillots','assets/img/categories/maillots.webp',8);
 
 INSERT IGNORE INTO delivery_zones (name,fee) VALUES
  ('Dakar centre',2000),('Ouakam-Ngor-Almadies-Yoff',2500),

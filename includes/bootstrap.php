@@ -54,6 +54,12 @@ if (PHP_SAPI !== 'cli') {
     if (!str_contains($scriptName, '/admin/') && !in_array($script, ['analytics-track.php', 'qr-go.php'], true)) {
         $eventType = $script === 'produit.php' ? 'product_view' : 'page_view';
         $productId = $script === 'produit.php' ? max(0, (int) ($_GET['id'] ?? 0)) : null;
+        if ($productId) {
+            // Produit inexistant (lien périmé, robot) : on n'enregistre pas d'identifiant invalide.
+            $exists = $pdo->prepare('SELECT 1 FROM products WHERE id=?');
+            $exists->execute([$productId]);
+            if (!$exists->fetchColumn()) $productId = null;
+        }
         $key = $eventType . ':' . ($productId ?? 0) . ':' . $script;
         if (($_SESSION['analytics_last'] ?? '') !== $key) {
             $_SESSION['analytics_last'] = $key;

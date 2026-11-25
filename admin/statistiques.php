@@ -22,8 +22,8 @@ $byCat = $q("SELECT COALESCE(c.name,'Sans catégorie') name, SUM(oi.quantity*oi.
     WHERE $valid AND o.created_at>=? GROUP BY name ORDER BY amount DESC", [$since])->fetchAll();
 $byPay = $q("SELECT payment_method m, COUNT(*) n, SUM(total) amount FROM orders o WHERE $valid AND created_at>=? GROUP BY m ORDER BY amount DESC", [$since])->fetchAll();
 $byZone = $q("SELECT COALESCE(z.name,'—') name, COUNT(*) n, SUM(o.total) amount FROM orders o LEFT JOIN delivery_zones z ON z.id=o.delivery_zone_id WHERE $valid AND o.created_at>=? GROUP BY name ORDER BY n DESC LIMIT 6", [$since])->fetchAll();
-$top = $q("SELECT COALESCE(p.name, oi.product_name) name, p.image, SUM(oi.quantity) qty, SUM(oi.quantity*oi.price) amount FROM order_items oi JOIN orders o ON o.id=oi.order_id
-    LEFT JOIN variants v ON v.id=oi.variant_id LEFT JOIN products p ON p.id=v.product_id WHERE $valid AND o.created_at>=? GROUP BY COALESCE(p.id, oi.product_name), name, p.image ORDER BY qty DESC LIMIT 10", [$since])->fetchAll();
+$top = $q("SELECT COALESCE(MAX(p.name), MAX(oi.product_name)) name, MAX(p.image) image, SUM(oi.quantity) qty, SUM(oi.quantity*oi.price) amount FROM order_items oi JOIN orders o ON o.id=oi.order_id
+    LEFT JOIN variants v ON v.id=oi.variant_id LEFT JOIN products p ON p.id=v.product_id WHERE $valid AND o.created_at>=? GROUP BY COALESCE(p.id, oi.product_name) ORDER BY qty DESC LIMIT 10", [$since])->fetchAll();
 // Les coffrets (taille technique « Unique ») sont exclus : leurs tailles réelles sont celles des composants.
 $sizes = $q("SELECT oi.size, SUM(oi.quantity) qty FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE $valid AND o.created_at>=?
     AND NOT EXISTS (SELECT 1 FROM order_item_components oic WHERE oic.order_item_id=oi.id) GROUP BY oi.size ORDER BY qty DESC LIMIT 8", [$since])->fetchAll();

@@ -51,10 +51,11 @@ for ($i = 0; $i < $period; $i += $bucket) {
     $spark['rev'][] = $c; $spark['ord'][] = $o; $spark['cli'][] = $cu; $spark['prod'][] = $pr;
 }
 
-$best = $pdo->prepare("SELECT COALESCE(p.name, oi.product_name) name, p.image, p.id, SUM(oi.quantity) qty, SUM(oi.quantity*oi.price) amount
+// Colonnes agrégées (MAX) : compatible avec le mode ONLY_FULL_GROUP_BY de MySQL 8 (actif par défaut sur un serveur).
+$best = $pdo->prepare("SELECT COALESCE(MAX(p.name), MAX(oi.product_name)) name, MAX(p.image) image, MAX(p.id) id, SUM(oi.quantity) qty, SUM(oi.quantity*oi.price) amount
     FROM order_items oi JOIN orders o ON o.id=oi.order_id AND o.status<>'annulee' AND o.created_at>=?
     LEFT JOIN variants v ON v.id=oi.variant_id LEFT JOIN products p ON p.id=v.product_id
-    GROUP BY COALESCE(p.id, oi.product_name), name, p.image, p.id ORDER BY qty DESC LIMIT 4");
+    GROUP BY COALESCE(p.id, oi.product_name) ORDER BY qty DESC LIMIT 4");
 $best->execute([$s]);
 $best = $best->fetchAll();
 $bestMax = max(1, ...array_map(fn($b) => (int) $b['qty'], $best ?: [['qty' => 1]]));

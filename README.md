@@ -5,7 +5,9 @@ Boutique en ligne de mode masculine (PHP + MySQL + Tailwind CSS) : catalogue, pa
 ## Installation
 
 1. Copier le projet dans le dossier web (ex. `C:\wamp64\www\gentleman`).
-2. Créer la base `le_gentleman` et importer `sql/schema.sql`, puis les fichiers `sql/migration-*.sql`.
+2. **Nouvelle installation** : importer uniquement `sql/schema.sql` (il crée la base `le_gentleman` et contient déjà
+   toutes les migrations). Les fichiers `sql/migration-*.sql`, `analytics.sql`, `qr-campaigns.sql` et `gift-boxes.sql`
+   servent seulement à mettre à jour une base **déjà existante** : sur une base neuve, ils échouent (colonnes en double).
 3. Copier `config.example.php` en `config.php` et renseigner :
    - les accès à la base de données ;
    - `APP_SECRET` : une longue clé aléatoire (`php -r "echo bin2hex(random_bytes(24));"`) ;
