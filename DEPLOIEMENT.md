@@ -90,6 +90,7 @@ const DB_PASS = '<MOT_DE_PASSE_BDD_LONG>';
 const BASE_URL = '';                               // site à la racine du domaine
 const SITE_URL = 'https://legentleman.shop';       // obligatoire en production (liens de facture, Wave)
 const APP_SECRET = '<CLÉ_GÉNÉRÉE_CI-DESSUS>';      // ne plus jamais la changer ensuite
+const SHOP_TIKTOK = 'https://www.tiktok.com/@legentleman395';  // lien TikTok du pied de page (si absent : lien masqué)
 ```
 
 ```bash
@@ -140,6 +141,10 @@ legentleman.shop {
 		Strict-Transport-Security "max-age=31536000"
 	}
 
+	# Référencement Google : robots.txt et sitemap.xml sont générés en PHP (équivalent des règles du .htaccess).
+	rewrite /robots.txt /robots.php
+	rewrite /sitemap.xml /sitemap.php
+
 	php_fastcgi unix//run/php/php8.3-fpm.sock {
 		try_files {path} {path}/index.php =404
 	}
@@ -170,10 +175,22 @@ curl -I https://legentleman.shop/config.php            # 404
 curl -I https://legentleman.shop/sql/schema.sql        # 404
 curl -I https://legentleman.shop/.git/config           # 404
 curl -I https://legentleman.shop/includes/db.php       # 404
+curl -s https://legentleman.shop/robots.txt            # liste « Disallow » + ligne « Sitemap: https://legentleman.shop/sitemap.xml »
+curl -s https://legentleman.shop/sitemap.xml | head -4 # XML commençant par <urlset>, adresses en https://legentleman.shop/
 sudo tail -n 50 /var/log/php$PHPV-fpm.log
 ```
 
 Puis dans le navigateur : passer une commande test, ouvrir `/admin/`, envoyer une photo produit.
+
+## 7. Google (après la mise en ligne)
+
+1. [Google Search Console](https://search.google.com/search-console) : ajouter la propriété **Domaine** `legentleman.shop`
+   et la valider avec l'enregistrement TXT fourni par Google (à ajouter dans la zone DNS chez Hostinger).
+2. Search Console → **Sitemaps** : envoyer `sitemap.xml`.
+3. Search Console → **Inspection de l'URL** : `https://legentleman.shop/` → « Demander l'indexation ».
+
+Le titre, la description, l'icône (48/96/192 px), les données structurées (boutique, produits avec prix en FCFA)
+et les balises de partage (WhatsApp, Facebook) sont déjà en place dans le code.
 
 ## Mises à jour du site
 
