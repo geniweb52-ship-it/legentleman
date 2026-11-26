@@ -9,7 +9,7 @@ if (!$order || !($isAdmin || order_token_valid($ref, (string) ($_GET['t'] ?? '')
     http_response_code(404);
     exit('Facture introuvable.');
 }
-if ($order['payment_method'] === 'wave') $order = wave_sync_order($pdo, $order);
+$order = order_sync_payment($pdo, $order);
 $items = order_items($pdo, (int) $order['id']);
 $paid = order_is_paid($order);
 $cancelled = $order['status'] === 'annulee';

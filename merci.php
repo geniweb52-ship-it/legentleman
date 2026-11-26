@@ -10,13 +10,16 @@ $order = find_order($pdo, $ref);
 $allowed = $order && (order_token_valid($ref, $token) || in_array($ref, $_SESSION['orders'] ?? [], true));
 if (!$allowed) redirect('suivi.php');
 
-// Retour depuis Wave : on vérifie le paiement directement auprès de Wave (jamais sur la seule foi de l'URL).
+// Retour depuis Wave / GeniusPay : on vérifie le paiement directement auprès du prestataire (jamais sur la seule foi de l'URL).
 $waveReturn = (string) ($_GET['wave'] ?? '');
-if ($order['payment_method'] === 'wave') $order = wave_sync_order($pdo, $order);
+$gpReturn = (string) ($_GET['gp'] ?? '');
+$order = order_sync_payment($pdo, $order);
 $items = order_items($pdo, (int) $order['id']);
 $paid = order_is_paid($order);
 $isWave = $order['payment_method'] === 'wave';
 $isOrange = $order['payment_method'] === 'orange';
+$isGeniuspay = $order['payment_method'] === 'geniuspay';
+$canPayOnline = $isGeniuspay && !$paid && $order['status'] !== 'annulee' && geniuspay_enabled();
 $waUrl = whatsapp_url(order_whatsapp_message($order, $items));
 $autoWhatsapp = isset($_GET['wa']) && ($order['channel'] ?? '') === 'whatsapp';
 
@@ -35,6 +38,18 @@ require __DIR__ . '/includes/header.php';
     <div class="mt-8 rounded-xl border border-terra/30 bg-terra/5 p-4 text-sm text-terra" role="alert">Le paiement Wave n'a pas abouti. Votre commande est conservée : contactez-nous sur WhatsApp pour obtenir un nouveau lien.</div>
   <?php elseif ($waveReturn === 'success' && !$paid): ?>
     <div class="mt-8 rounded-xl border border-line bg-white p-4 text-sm" role="status">Nous attendons la confirmation de Wave. Actualisez cette page dans quelques secondes.</div>
+  <?php elseif (in_array($gpReturn, ['error', 'unavailable'], true) && !$paid): ?>
+    <div class="mt-8 rounded-xl border border-terra/30 bg-terra/5 p-4 text-sm text-terra" role="alert"><?= $gpReturn === 'error' ? 'Le paiement n’a pas abouti.' : 'Le service de paiement en ligne est momentanément indisponible.' ?> Votre commande est conservée : vous pouvez réessayer ci-dessous ou nous contacter sur WhatsApp.</div>
+  <?php elseif ($gpReturn === 'success' && !$paid): ?>
+    <div class="mt-8 rounded-xl border border-line bg-white p-4 text-sm" role="status">Nous attendons la confirmation de votre paiement. Actualisez cette page dans quelques secondes.</div>
+  <?php endif; ?>
+
+  <?php if ($canPayOnline): ?>
+    <div class="mt-8 rounded-2xl bg-white border-2 border-forest p-6 text-center">
+      <p class="font-semibold text-lg">Réglez votre commande en ligne</p>
+      <p class="text-sm text-muted mt-1">Wave, Orange Money ou carte bancaire · <?= money((int) $order['total']) ?></p>
+      <a href="<?= e(geniuspay_pay_link($ref)) ?>" class="btn btn-primary w-full mt-5 !min-h-[54px] text-base"><?= icon('card') ?> Payer maintenant</a>
+    </div>
   <?php endif; ?>
 
   <?php if ($orderReadyDate = order_ready_date($items)): ?>
@@ -58,7 +73,9 @@ require __DIR__ . '/includes/header.php';
         <div class="flex-1 min-w-0">
           <p class="font-semibold text-lg">Envoyez votre commande sur WhatsApp</p>
           <p class="text-sm text-muted mt-1">Le message est déjà rempli : prénom, nom, téléphone, adresse, articles, total et lien de la facture. Il ne reste qu'à appuyer sur « Envoyer ».</p>
-          <?php if (!$paid && $isWave): ?>
+          <?php if (!$paid && $isGeniuspay): ?>
+            <p class="text-sm mt-3">Vous avez choisi le paiement en ligne : dès qu’il est effectué, votre commande est confirmée automatiquement.</p>
+          <?php elseif (!$paid && $isWave): ?>
             <p class="text-sm mt-3">Après l’envoi de votre commande, nous vous transmettrons le lien de paiement Wave dans cette conversation. Effectuez le paiement, puis envoyez-nous une capture du reçu.</p>
           <?php elseif (!$paid && $isOrange): ?>
             <p class="text-sm mt-3">Nous vous enverrons les instructions de paiement Orange Money dans cette conversation. Après le règlement, envoyez-nous une capture du reçu.</p>

@@ -17,7 +17,7 @@ if ($ref !== '' && ($known || $_SERVER['REQUEST_METHOD'] === 'POST')) {
     $digits = fn(string $s) => substr(preg_replace('/\D/', '', $s), -8);
     if ($found && ($known || ($phone !== '' && $digits($phone) === $digits((string) $found['phone'])))) {
         $order = $found;
-        if ($order['payment_method'] === 'wave') $order = wave_sync_order($pdo, $order);
+        $order = order_sync_payment($pdo, $order);
         $_SESSION['orders'][] = $ref;
         $_SESSION['orders'] = array_values(array_unique($_SESSION['orders']));
         $items = order_items($pdo, (int) $order['id']);
@@ -87,6 +87,9 @@ require __DIR__ . '/includes/header.php';
               <p class="mt-1 font-semibold <?= $paid ? 'text-forest' : 'text-ink' ?>"><?= e($paymentState) ?></p>
               <?php if ($paid && $order['paid_at']): ?>
                 <p class="mt-1 text-xs text-muted">Confirmé le <?= e(date('d/m/Y à H:i', strtotime((string) $order['paid_at']))) ?></p>
+              <?php elseif ($order['payment_method'] === 'geniuspay'): ?>
+                <p class="mt-1 text-sm text-muted">Paiement en ligne : Wave, Orange Money ou carte bancaire.</p>
+                <?php if ($order['status'] !== 'annulee' && geniuspay_enabled()): ?><a href="<?= e(geniuspay_pay_link((string) $order['reference'])) ?>" class="btn btn-primary mt-3 !min-h-11"><?= icon('card', 'w-4 h-4') ?> Payer maintenant</a><?php endif; ?>
               <?php elseif ($order['payment_method'] === 'wave'): ?>
                 <p class="mt-1 text-sm text-muted"><?= $order['status'] === 'nouvelle' ? 'Envoyez d’abord votre commande sur WhatsApp : nous vous transmettrons le lien Wave dans cette conversation.' : 'Utilisez le lien Wave que nous vous avons transmis sur WhatsApp.' ?> Après paiement, envoyez une capture du reçu.</p>
               <?php elseif ($order['payment_method'] === 'orange'): ?>

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/cart.php';
+require_once __DIR__ . '/includes/orders.php';
 
 /** Termine une action du panier : JSON pour les requêtes AJAX, sinon redirection. */
 function cart_respond(bool $ok, string $message, string $fallback): never
@@ -264,9 +265,9 @@ require __DIR__ . '/includes/header.php';
       <label class="block col-span-2"><span class="label">Paiement</span>
         <span class="relative block">
           <select name="payment_method" class="field appearance-none pr-10">
-            <option value="delivery">Espèces à la livraison</option>
-            <option value="wave">Wave</option>
-            <option value="orange">Orange Money</option>
+            <?php foreach (array_reverse(checkout_payment_options()) as [$value, $label, $hint]): ?>
+              <option value="<?= e($value) ?>"><?= e($label) ?><?= $value === 'geniuspay' ? ' (' . e($hint) . ')' : '' ?></option>
+            <?php endforeach; ?>
           </select>
           <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"><?= icon('chevron-down', 'w-4 h-4') ?></span>
         </span>

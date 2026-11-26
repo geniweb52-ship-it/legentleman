@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $ref = strtoupper(trim((string) ($_GET['ref'] ?? '')));
 $order = $ref !== '' ? find_order($pdo, $ref) : null;
+if ($order) $order = order_sync_payment($pdo, $order);
 
 if ($order) {
     $items = order_items($pdo, (int) $order['id']);
@@ -60,6 +61,8 @@ if ($order) {
     $first = $order['first_name'] ?: $order['customer_name'];
     if ($order['paid_at']) {
         $paymentInstruction = 'Votre paiement est confirmé.';
+    } elseif ($order['payment_method'] === 'geniuspay') {
+        $paymentInstruction = 'Vous pouvez la régler en ligne (Wave, Orange Money ou carte) avec ce lien : ' . geniuspay_pay_link((string) $order['reference']);
     } elseif ($order['payment_method'] === 'wave') {
         $paymentInstruction = 'Vous avez choisi Wave. Nous vous enverrons le lien de paiement dans cette conversation. Après le règlement, envoyez-nous une capture du reçu.';
     } elseif ($order['payment_method'] === 'orange') {
@@ -73,7 +76,9 @@ if ($order) {
         'Confirmer la commande' => "Bonjour $first, nous avons bien reçu votre commande {$order['reference']} (" . fcfa((int) $order['total']) . ").$readyInfo $paymentInstruction Merci pour votre confiance ! — " . SHOP_NAME,
         'Annoncer la livraison' => "Bonjour $first, votre commande {$order['reference']} est en route ! Le livreur vous appellera à l'approche. " . ($order['payment_method'] === 'delivery' && !$order['paid_at'] ? 'Montant à régler : ' . fcfa((int) $order['total']) . '. ' : '') . '— ' . SHOP_NAME,
     ];
-    if (!$order['paid_at'] && $order['payment_method'] === 'wave') {
+    if (!$order['paid_at'] && $order['payment_method'] === 'geniuspay') {
+        $messages['Envoyer le lien de paiement en ligne'] = "Bonjour $first,\n\nPour votre commande {$order['reference']} :\nMontant à payer : " . fcfa((int) $order['total']) . "\nLien de paiement (Wave, Orange Money ou carte) : " . geniuspay_pay_link((string) $order['reference']) . "\n\nVotre commande sera confirmée automatiquement après le paiement.\n— " . SHOP_NAME;
+    } elseif (!$order['paid_at'] && $order['payment_method'] === 'wave') {
         $wavePayUrl = site_url('wave-pay.php?ref=' . rawurlencode((string) $order['reference']) . '&t=' . order_token((string) $order['reference']));
         $messages['Envoyer le lien de paiement Wave'] = "Bonjour $first,\n\nPour votre commande {$order['reference']} :\nMontant exact à payer : " . fcfa((int) $order['total']) . "\nLien de paiement Wave : $wavePayUrl\n\nAprès le paiement, envoyez-nous une capture du reçu dans cette conversation.\n— " . SHOP_NAME;
     } elseif (!$order['paid_at'] && $order['payment_method'] === 'orange') {
@@ -176,7 +181,7 @@ $q = trim((string) ($_GET['q'] ?? ''));
 $where = ['1=1']; $params = [];
 if (isset(ORDER_STATUSES[$status])) { $where[] = 'o.status=?'; $params[] = $status; }
 if ($status === 'a_traiter') $where[] = "o.status IN ('nouvelle','payee','en_preparation')";
-if ($payment === 'attente') $where[] = "o.payment_method IN ('wave','orange') AND o.paid_at IS NULL AND o.status<>'annulee'";
+if ($payment === 'attente') $where[] = "o.payment_method IN ('wave','orange','geniuspay') AND o.paid_at IS NULL AND o.status<>'annulee'";
 if ($payment === 'payee') $where[] = 'o.paid_at IS NOT NULL AND o.status<>\'annulee\'';
 if ($q !== '') { $where[] = '(o.reference LIKE ? OR o.customer_name LIKE ? OR o.phone LIKE ?)'; array_push($params, "%$q%", "%$q%", "%$q%"); }
 $page = max(1, (int) ($_GET['page'] ?? 1)); $per = 20;
@@ -186,7 +191,7 @@ $st = $pdo->prepare('SELECT o.*, dz.name zone_name, (SELECT SUM(quantity) FROM o
 $st->execute($params);
 $orders = $st->fetchAll();
 $byStatus = $pdo->query('SELECT status, COUNT(*) n FROM orders GROUP BY status')->fetchAll(PDO::FETCH_KEY_PAIR);
-$pendingOnlinePayments = (int) $pdo->query("SELECT COUNT(*) FROM orders WHERE payment_method IN ('wave','orange') AND paid_at IS NULL AND status<>'annulee'")->fetchColumn();
+$pendingOnlinePayments = (int) $pdo->query("SELECT COUNT(*) FROM orders WHERE payment_method IN ('wave','orange','geniuspay') AND paid_at IS NULL AND status<>'annulee'")->fetchColumn();
 $todo = ($byStatus['nouvelle'] ?? 0) + ($byStatus['payee'] ?? 0) + ($byStatus['en_preparation'] ?? 0);
 
 $pageTitle = 'Commandes';
@@ -206,7 +211,7 @@ foreach (ORDER_STATUSES as $k => [$l]) $tabs[$k] = [$l, $byStatus[$k] ?? 0];
     <div class="relative flex-1"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted"><?= icon('search', 'w-4 h-4') ?></span><input name="q" value="<?= e($q) ?>" placeholder="Référence, nom ou téléphone…" class="field !pl-9"></div>
     <select name="paiement" class="field sm:!w-auto">
       <option value="">Tous les paiements</option>
-      <option value="attente" <?= $payment === 'attente' ? 'selected' : '' ?>>À vérifier · Wave/Orange (<?= $pendingOnlinePayments ?>)</option>
+      <option value="attente" <?= $payment === 'attente' ? 'selected' : '' ?>>À vérifier · paiements en ligne (<?= $pendingOnlinePayments ?>)</option>
       <option value="payee" <?= $payment === 'payee' ? 'selected' : '' ?>>Paiements reçus</option>
     </select>
     <button class="btn btn-outline">Filtrer</button>

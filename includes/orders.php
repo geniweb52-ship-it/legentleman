@@ -108,7 +108,37 @@ function order_channel_badge(array $order): string
 
 function payment_label(string $method): string
 {
-    return ['wave' => 'Wave', 'orange' => 'Orange Money', 'delivery' => 'Espèces à la livraison'][$method] ?? $method;
+    return ['wave' => 'Wave', 'orange' => 'Orange Money', 'geniuspay' => 'Paiement en ligne (GeniusPay)', 'delivery' => 'Espèces à la livraison'][$method] ?? $method;
+}
+
+/**
+ * Modes de paiement proposés au client : [valeur, libellé, précision, couleur].
+ * GeniusPay actif : « Payer en ligne » ou « Payer à la livraison ». Sinon : Wave, Orange Money (via WhatsApp) ou livraison.
+ */
+function checkout_payment_options(): array
+{
+    $delivery = ['delivery', 'Payer à la livraison', 'Espèces à la réception', '#2E4A36'];
+    if (geniuspay_enabled()) {
+        return [['geniuspay', 'Payer en ligne', 'Wave, Orange Money ou carte bancaire', '#C8A15A'], $delivery];
+    }
+    return [
+        ['wave', 'Wave', 'Lien envoyé sur WhatsApp après envoi de la commande', '#1DC3F2'],
+        ['orange', 'Orange Money', 'Instructions envoyées sur WhatsApp après envoi', '#FF7900'],
+        $delivery,
+    ];
+}
+
+/** Modes de paiement réglés à distance (à vérifier tant qu'ils ne sont pas payés). */
+const ONLINE_PAYMENT_METHODS = ['wave', 'orange', 'geniuspay'];
+
+/** Revérifie le paiement auprès du prestataire (Wave ou GeniusPay) et renvoie la commande à jour. */
+function order_sync_payment(PDO $pdo, array $order): array
+{
+    return match ($order['payment_method']) {
+        'wave' => wave_sync_order($pdo, $order),
+        'geniuspay' => geniuspay_sync_order($pdo, $order),
+        default => $order,
+    };
 }
 
 function order_is_paid(array $order): bool
@@ -157,7 +187,8 @@ function order_whatsapp_message(array $order, array $items): string
     $paymentMethod = (string) $order['payment_method'];
     $lines[] = '💳 Paiement : ' . payment_label($paymentMethod) . (order_is_paid($order) ? ' — PAYÉ ✅' . ($order['wave_transaction_id'] ? ' (transaction ' . $order['wave_transaction_id'] . ')' : '') : ' — en attente');
     if (!order_is_paid($order)) {
-        if ($paymentMethod === 'wave') $lines[] = 'Merci de m’envoyer le lien de paiement Wave. Après le règlement, je vous transmettrai une capture du reçu.';
+        if ($paymentMethod === 'geniuspay') $lines[] = 'Je règle en ligne (Wave, Orange Money ou carte) : ' . geniuspay_pay_link((string) $order['reference']);
+        elseif ($paymentMethod === 'wave') $lines[] = 'Merci de m’envoyer le lien de paiement Wave. Après le règlement, je vous transmettrai une capture du reçu.';
         elseif ($paymentMethod === 'orange') $lines[] = 'Merci de m’envoyer les instructions de paiement Orange Money. Après le règlement, je vous transmettrai une capture du reçu.';
         else $lines[] = 'Je réglerai le montant au livreur à la réception.';
     }
@@ -233,4 +264,131 @@ function wave_sync_order(PDO $pdo, array $order): array
         return find_order($pdo, (string) $order['reference']) ?? $order;
     }
     return $order;
+}
+
+/* ----------------------------------------------------------- GeniusPay */
+
+/** Réglage GeniusPay de config.php ('' si absent : les anciens config.php restent valides). */
+function geniuspay_config(string $name): string
+{
+    return defined($name) ? (string) constant($name) : '';
+}
+
+/** GeniusPay est proposé au client dès que les deux clés API sont renseignées. */
+function geniuspay_enabled(): bool
+{
+    return geniuspay_config('GENIUSPAY_PUBLIC_KEY') !== '' && geniuspay_config('GENIUSPAY_SECRET_KEY') !== '';
+}
+
+/** Clés de test (pk_sandbox_…) : aucun argent réel n'est débité. */
+function geniuspay_is_sandbox(): bool
+{
+    return str_contains(geniuspay_config('GENIUSPAY_PUBLIC_KEY'), '_sandbox_');
+}
+
+/** Lien (à partager) qui envoie le client sur la page de paiement GeniusPay de sa commande. */
+function geniuspay_pay_link(string $reference): string
+{
+    return site_url('geniuspay-pay.php?ref=' . rawurlencode($reference) . '&t=' . order_token($reference));
+}
+
+/** Ajoute « geniuspay » aux modes de paiement et la colonne de référence GeniusPay aux bases existantes. */
+function orders_geniuspay_ensure(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    $column = $pdo->query("SHOW COLUMNS FROM orders LIKE 'payment_method'")->fetch();
+    if ($column && !str_contains((string) $column['Type'], 'geniuspay')) {
+        $pdo->exec("ALTER TABLE orders MODIFY payment_method ENUM('wave','orange','geniuspay','delivery') NOT NULL");
+    }
+    if (!$pdo->query("SHOW COLUMNS FROM orders LIKE 'geniuspay_reference'")->fetch()) {
+        $pdo->exec('ALTER TABLE orders ADD COLUMN geniuspay_reference VARCHAR(40) NULL AFTER wave_transaction_id');
+    }
+}
+
+/** Appel à l'API marchand GeniusPay. Renvoie [code HTTP, réponse décodée]. */
+function geniuspay_request(string $method, string $path, ?array $body = null): array
+{
+    $base = geniuspay_config('GENIUSPAY_API_URL') ?: 'https://pay.genius.ci/api/v1/merchant';
+    $ch = curl_init(rtrim($base, '/') . $path);
+    $options = [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 25,
+        CURLOPT_HTTPHEADER => [
+            'X-API-Key: ' . geniuspay_config('GENIUSPAY_PUBLIC_KEY'),
+            'X-API-Secret: ' . geniuspay_config('GENIUSPAY_SECRET_KEY'),
+            'Content-Type: application/json',
+            'Accept: application/json',
+        ],
+    ];
+    if ($body !== null) $options[CURLOPT_POSTFIELDS] = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    curl_setopt_array($ch, $options);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($raw === false) error_log('GeniusPay: ' . curl_error($ch));
+    return [$code, is_string($raw) ? (json_decode($raw, true) ?: []) : []];
+}
+
+/** Numéro au format international (+221…) attendu par GeniusPay. */
+function geniuspay_phone(string $phone): string
+{
+    $digits = preg_replace('/\D/', '', $phone);
+    if (str_starts_with($digits, '00')) $digits = substr($digits, 2);
+    if (strlen($digits) === 9) $digits = '221' . $digits;
+    return '+' . $digits;
+}
+
+/**
+ * Crée un paiement GeniusPay pour la commande et renvoie l'adresse de la page de paiement
+ * (le client y choisit Wave, Orange Money, carte…), ou null en cas d'échec.
+ */
+function geniuspay_checkout_url(PDO $pdo, array $order): ?string
+{
+    if (!geniuspay_enabled()) return null;
+    orders_geniuspay_ensure($pdo);
+    $reference = (string) $order['reference'];
+    [$code, $response] = geniuspay_request('POST', '/payments', [
+        'amount' => (int) $order['total'],
+        'currency' => 'XOF',
+        'description' => mb_substr(SHOP_NAME . ' — commande ' . $reference, 0, 500),
+        'customer' => array_filter([
+            'name' => (string) $order['customer_name'],
+            'phone' => geniuspay_phone((string) $order['phone']),
+            'country' => 'SN',
+        ]),
+        'success_url' => order_page_url($reference, ['gp' => 'success']),
+        'error_url' => order_page_url($reference, ['gp' => 'error']),
+        'metadata' => ['order_reference' => $reference],
+    ]);
+    $data = $response['data'] ?? [];
+    $url = (string) ($data['checkout_url'] ?? $data['payment_url'] ?? '');
+    if ($code >= 200 && $code < 300 && $url !== '') {
+        $pdo->prepare('UPDATE orders SET geniuspay_reference=? WHERE id=?')->execute([$data['reference'] ?? null, (int) $order['id']]);
+        return $url;
+    }
+    error_log('GeniusPay paiement ' . $reference . ' : HTTP ' . $code . ' ' . json_encode($response));
+    return null;
+}
+
+/** Vérifie auprès de GeniusPay si le paiement de la commande est terminé ; met la commande à jour. */
+function geniuspay_sync_order(PDO $pdo, array $order): array
+{
+    if (order_is_paid($order) || empty($order['geniuspay_reference']) || !geniuspay_enabled()) return $order;
+    [$code, $response] = geniuspay_request('GET', '/payments/' . rawurlencode((string) $order['geniuspay_reference']));
+    $payment = $response['data'] ?? [];
+    if ($code === 200 && geniuspay_payment_settles($payment, $order)) {
+        mark_order_paid($pdo, (int) $order['id'], (string) $payment['reference']);
+        return find_order($pdo, (string) $order['reference']) ?? $order;
+    }
+    return $order;
+}
+
+/** Le paiement GeniusPay est terminé, au bon montant et en francs CFA. */
+function geniuspay_payment_settles(array $payment, array $order): bool
+{
+    return ($payment['status'] ?? '') === 'completed'
+        && strtoupper((string) ($payment['currency'] ?? 'XOF')) === 'XOF'
+        && (int) round((float) ($payment['amount'] ?? 0)) >= (int) $order['total'];
 }

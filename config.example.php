@@ -37,3 +37,16 @@ const APP_SECRET = 'A_REMPLACER_par_une_longue_cle_aleatoire';
 const WAVE_PAYMENT_LINK = 'https://pay.wave.com/m/M_sn_qo9ZfHWTdm-T/c/sn/';
 const WAVE_API_KEY = '';
 const WAVE_WEBHOOK_SECRET = '';
+
+/*
+ * Paiement en ligne GeniusPay (Wave, Orange Money, carte bancaire…) — https://pay.genius.ci
+ * - Clés API : tableau de bord GeniusPay > Développeurs / API. Les clés pk_sandbox_… / sk_sandbox_…
+ *   servent aux tests (aucun débit réel) ; passez aux clés pk_live_… / sk_live_… pour encaisser.
+ * - Dès que les deux clés sont renseignées, l'option « Payer en ligne maintenant » apparaît à la commande.
+ * - GENIUSPAY_WEBHOOK_SECRET (conseillé) : secret whsec_… du webhook (événement payment.success)
+ *   pointant vers https://votre-site/geniuspay-webhook.php
+ */
+const GENIUSPAY_PUBLIC_KEY = '';
+const GENIUSPAY_SECRET_KEY = '';
+const GENIUSPAY_WEBHOOK_SECRET = '';
+const GENIUSPAY_API_URL = 'https://pay.genius.ci/api/v1/merchant';

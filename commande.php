@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($firstName === '' || $lastName === '') $errors[] = 'Indiquez votre prénom et votre nom.';
     if ($phone === '' || $address === '') $errors[] = 'Téléphone et adresse sont requis.';
     if ($phone !== '' && !preg_match('/^\+?[0-9\s]{8,20}$/', $phone)) $errors[] = 'Numéro de téléphone invalide.';
-    if (!in_array($payment, ['wave', 'orange', 'delivery'], true)) $errors[] = 'Choisissez un mode de paiement.';
+    if (!in_array($payment, array_column(checkout_payment_options(), 0), true)) $errors[] = 'Choisissez un mode de paiement.';
     $zoneStmt = $pdo->prepare('SELECT * FROM delivery_zones WHERE id=? AND active=1');
     $zoneStmt->execute([$zoneId]);
     $zone = $zoneStmt->fetch();
@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errors) {
         orders_channel_ensure($pdo);
+        if ($payment === 'geniuspay') orders_geniuspay_ensure($pdo);
         try {
             $pdo->beginTransaction();
             $subtotal = 0;
@@ -119,6 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['last_order'] = $reference;
             $_SESSION['orders'][] = $reference;
             $_SESSION['orders'] = array_slice(array_values(array_unique($_SESSION['orders'])), -20);
+            // Paiement en ligne : direction la page de paiement GeniusPay, retour automatique sur merci.php.
+            if ($payment === 'geniuspay' && $channel === 'site') redirect(geniuspay_pay_link($reference));
             redirect(order_page_url($reference, $channel === 'whatsapp' ? ['wa' => 1] : []));
         } catch (RuntimeException $exception) {
             if ($pdo->inTransaction()) $pdo->rollBack();
@@ -187,12 +190,9 @@ require __DIR__ . '/includes/header.php';
 
       <section class="rounded-2xl bg-white border border-line p-5 sm:p-7">
         <h2 class="font-display text-2xl flex items-center gap-3"><span class="text-forest"><?= icon('card', 'w-6 h-6') ?></span> Paiement</h2>
-        <div class="mt-6 grid sm:grid-cols-3 gap-3">
-          <?php foreach ([
-            ['wave', 'Wave', 'Lien envoyé sur WhatsApp après envoi de la commande', '#1DC3F2'],
-            ['orange', 'Orange Money', 'Instructions envoyées sur WhatsApp après envoi', '#FF7900'],
-            ['delivery', 'À la livraison', 'Espèces à la réception', '#2E4A36'],
-          ] as [$value, $label, $hint, $dot]): ?>
+        <?php $paymentOptions = checkout_payment_options(); ?>
+        <div class="mt-6 grid <?= count($paymentOptions) === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3' ?> gap-3">
+          <?php foreach ($paymentOptions as [$value, $label, $hint, $dot]): ?>
             <label class="relative cursor-pointer">
               <input type="radio" name="payment_method" value="<?= $value ?>" required class="peer sr-only" <?= $selectedPayment === $value ? 'checked' : '' ?>>
               <span class="block h-full rounded-xl border border-line p-4 transition peer-checked:border-forest peer-checked:ring-1 peer-checked:ring-forest peer-checked:bg-forest/[.03] hover:border-ink/40 peer-focus-visible:ring-2 peer-focus-visible:ring-forest">

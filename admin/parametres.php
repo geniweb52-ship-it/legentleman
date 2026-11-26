@@ -25,6 +25,8 @@ $checks = [
     ['Lien de paiement Wave', WAVE_PAYMENT_LINK !== '' ? 'Configuré' : 'Non configuré', WAVE_PAYMENT_LINK !== '', 'WAVE_PAYMENT_LINK'],
     ['API Wave (montant prérempli + retour automatique)', WAVE_API_KEY === '' ? 'Clé API non renseignée' : (wave_api_enabled() ? 'Active' : 'Clé présente, site non https'), wave_api_enabled(), 'WAVE_API_KEY, SITE_URL'],
     ['Webhook Wave (confirmation automatique)', WAVE_WEBHOOK_SECRET !== '' ? 'Configuré' : 'Non configuré (facultatif)', WAVE_WEBHOOK_SECRET !== '', 'WAVE_WEBHOOK_SECRET'],
+    ['GeniusPay (paiement en ligne : Wave, Orange Money, carte)', geniuspay_enabled() ? (geniuspay_is_sandbox() ? 'Actif — clés de TEST (sandbox)' : 'Actif') : 'Clés API non renseignées', geniuspay_enabled() && !geniuspay_is_sandbox(), 'GENIUSPAY_PUBLIC_KEY, GENIUSPAY_SECRET_KEY'],
+    ['Webhook GeniusPay (confirmation automatique)', geniuspay_config('GENIUSPAY_WEBHOOK_SECRET') !== '' ? 'Configuré' : 'Non configuré (conseillé)', geniuspay_config('GENIUSPAY_WEBHOOK_SECRET') !== '', 'GENIUSPAY_WEBHOOK_SECRET → ' . site_url('geniuspay-webhook.php')],
     ['Lien Orange Money', ORANGE_PAYMENT_LINK !== '' ? 'Configuré' : 'Envoyé manuellement sur WhatsApp', ORANGE_PAYMENT_LINK !== '', 'ORANGE_PAYMENT_LINK'],
     ['Livraison offerte dès', fcfa(FREE_DELIVERY_THRESHOLD), true, 'FREE_DELIVERY_THRESHOLD'],
     ['Adresse du site', site_url(), str_starts_with(site_url(), 'https://'), 'SITE_URL'],

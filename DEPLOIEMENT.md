@@ -160,3 +160,24 @@ curl -s https://legentleman.shop/sitemap.xml | head -4 # XML <urlset>, adresses 
 
 Le titre, la description, l'icône (48/96/192 px), les données structurées (boutique, produits avec prix en FCFA)
 et les balises de partage (WhatsApp, Facebook) sont déjà en place dans le code.
+
+## Paiement en ligne GeniusPay
+
+1. Tableau de bord GeniusPay ([pay.genius.ci](https://pay.genius.ci)) → **API** : copier la clé publique (`pk_…`)
+   et la clé secrète (`sk_…`). Commencer avec les clés **sandbox** (aucun débit réel), puis passer aux clés **live**.
+2. Tableau de bord GeniusPay → **Webhooks** : créer un webhook vers `https://legentleman.shop/geniuspay-webhook.php`
+   avec l'événement `payment.success`, et copier le secret `whsec_…` (affiché une seule fois).
+3. Sur le serveur, renseigner dans `/opt/legentleman/app/config.php` (modèle dans `config.example.php`) :
+
+   ```php
+   const GENIUSPAY_PUBLIC_KEY = 'pk_live_…';
+   const GENIUSPAY_SECRET_KEY = 'sk_live_…';
+   const GENIUSPAY_WEBHOOK_SECRET = 'whsec_live_…';
+   const GENIUSPAY_API_URL = 'https://pay.genius.ci/api/v1/merchant';
+   ```
+
+4. Admin → **Paramètres** : les lignes GeniusPay doivent être vertes (« clés de TEST » tant que les clés sandbox sont en place).
+
+L'option « Payer en ligne maintenant » apparaît alors à la commande. La base est mise à jour toute seule à la première
+commande GeniusPay (sinon : `sql/migration-2026-11-geniuspay.sql`). Sans webhook, le paiement est quand même confirmé
+quand le client revient sur le site ou ouvre son suivi, et quand la commande est ouverte dans l'admin.
