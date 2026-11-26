@@ -268,18 +268,6 @@ function wave_sync_order(PDO $pdo, array $order): array
 
 /* ----------------------------------------------------------- GeniusPay */
 
-/** Réglage GeniusPay de config.php ('' si absent : les anciens config.php restent valides). */
-function geniuspay_config(string $name): string
-{
-    return defined($name) ? (string) constant($name) : '';
-}
-
-/** GeniusPay est proposé au client dès que les deux clés API sont renseignées. */
-function geniuspay_enabled(): bool
-{
-    return geniuspay_config('GENIUSPAY_PUBLIC_KEY') !== '' && geniuspay_config('GENIUSPAY_SECRET_KEY') !== '';
-}
-
 /** Clés de test (pk_sandbox_…) : aucun argent réel n'est débité. */
 function geniuspay_is_sandbox(): bool
 {

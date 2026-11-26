@@ -238,6 +238,7 @@ require __DIR__ . '/includes/header.php';
       </dl>
       <div class="mt-5 pt-5 border-t border-line flex justify-between items-baseline"><span class="font-semibold">Total</span><span class="text-2xl font-bold tabular-nums" data-total-label><?= money($subtotal) ?></span></div>
       <button class="btn btn-primary w-full mt-6 !min-h-[54px] text-base">Valider la commande</button>
+      <p class="mt-3 text-xs text-muted text-center leading-relaxed">En validant, vous acceptez nos <a href="<?= e(url('cgv.php')) ?>" target="_blank" class="underline underline-offset-2 hover:text-ink">conditions générales de vente</a>.</p>
       <p class="mt-3 text-xs text-muted text-center leading-relaxed">Après validation, votre récapitulatif complet est prêt à envoyer sur WhatsApp et votre facture est disponible.</p>
       <p class="mt-4 text-xs text-muted text-center flex items-center justify-center gap-2"><?= icon('shield', 'w-4 h-4 text-forest') ?> Vos informations servent uniquement à la livraison.</p>
     </aside>

@@ -6,7 +6,7 @@ header('Content-Type: application/xml; charset=utf-8');
 
 $urls = [];
 foreach (['' => '1.0', 'boutique.php' => '0.9', 'coffrets.php' => '0.8', 'boutique.php?sort=new' => '0.7', 'a-propos.php' => '0.5',
-          'contact.php' => '0.5', 'livraison.php' => '0.4', 'guide-tailles.php' => '0.4', 'cgv.php' => '0.2', 'confidentialite.php' => '0.2'] as $page => $priority) {
+          'contact.php' => '0.5', 'livraison.php' => '0.4', 'guide-tailles.php' => '0.4', 'cgv.php' => '0.2', 'conditions-utilisation.php' => '0.2', 'confidentialite.php' => '0.2'] as $page => $priority) {
     $urls[] = ['loc' => site_url($page), 'priority' => $priority];
 }
 foreach ($pdo->query("SELECT slug FROM categories WHERE slug<>'tous' ORDER BY sort_order") as $c) {

@@ -28,7 +28,7 @@ ob_start(); ?>
 <div class="divide-y divide-line border-y border-line">
   <?php foreach ([
     ['Quels sont les délais de livraison ?', '24 à 48 h à Dakar, 2 à 4 jours ouvrés dans les régions.'],
-    ['Comment payer ma commande ?', 'Par Wave, Orange Money ou en espèces à la livraison.'],
+    ['Comment payer ma commande ?', geniuspay_enabled() ? 'En ligne au moment de la commande (Wave, Orange Money ou carte bancaire, paiement sécurisé GeniusPay), ou en espèces à la livraison.' : 'Par Wave, Orange Money ou en espèces à la livraison.'],
     ['Puis-je échanger un article ?', "Oui, sous 7 jours si la taille ne convient pas, article non porté et dans son état d'origine."],
     ['Comment suivre ma commande ?', 'Rendez-vous sur la page « Suivre ma commande » avec votre référence et votre numéro.'],
   ] as [$q, $a]): ?>

@@ -11,6 +11,12 @@ ob_start(); ?>
 </div>
 <h2>Délais</h2>
 <ul><li>Dakar et banlieue : 24 à 48 h.</li><li>Régions : 2 à 4 jours ouvrés.</li><li>Nous vous appelons ou vous écrivons sur WhatsApp avant chaque livraison.</li></ul>
+<h2>Paiement</h2>
+<?php if (geniuspay_enabled()): ?>
+  <p>Payez en ligne au moment de la commande (Wave, Orange Money ou carte bancaire, sur la page sécurisée de notre prestataire GeniusPay), ou en espèces au livreur à la réception : préparez si possible le montant exact.</p>
+<?php else: ?>
+  <p>Payez par Wave, Orange Money ou en espèces au livreur à la réception : préparez si possible le montant exact.</p>
+<?php endif; ?>
 <h2>Échanges</h2>
 <p>La taille ne convient pas ? Vous disposez de 7 jours après réception pour demander un échange sur WhatsApp. L'article doit être non porté, non lavé et dans son emballage d'origine. Les frais de livraison de l'échange restent à la charge du client, sauf erreur de notre part.</p>
 <?php $pageBody = ob_get_clean();

@@ -256,13 +256,13 @@ require __DIR__ . '/includes/header.php';
       </form>
 
       <div class="mt-8 pt-7 border-t border-line grid grid-cols-3 gap-3 text-center">
-        <?php foreach ([['truck', 'Livraison rapide', 'Dakar et régions'], ['card', 'Paiement sécurisé', 'Wave, Orange Money ou à la livraison'], ['refresh', 'Échange facile', 'Sous 7 jours']] as [$ic, $t, $d]): ?>
+        <?php foreach ([['truck', 'Livraison rapide', 'Dakar et régions'], ['card', 'Paiement sécurisé', payment_methods_text()], ['refresh', 'Échange facile', 'Sous 7 jours']] as [$ic, $t, $d]): ?>
           <div><span class="inline-flex text-forest"><?= icon($ic, 'w-8 h-8') ?></span><p class="mt-2 text-[13px] font-semibold"><?= e($t) ?></p><p class="text-xs text-muted mt-0.5 leading-snug"><?= e($d) ?></p></div>
         <?php endforeach; ?>
       </div>
 
       <div class="mt-8 divide-y divide-line border-y border-line">
-        <details class="py-4"><summary class="flex items-center justify-between font-semibold text-sm">Livraison & paiement<span class="chev transition-transform"><?= icon('chevron-down', 'w-4 h-4') ?></span></summary><p class="pt-3 text-sm text-muted leading-relaxed">Livraison en 24 à 48 h à Dakar, 2 à 4 jours dans les régions. Livraison offerte dès <?= money(FREE_DELIVERY_THRESHOLD) ?> d'achat. Payez par Wave, Orange Money ou en espèces à la réception.</p></details>
+        <details class="py-4"><summary class="flex items-center justify-between font-semibold text-sm">Livraison & paiement<span class="chev transition-transform"><?= icon('chevron-down', 'w-4 h-4') ?></span></summary><p class="pt-3 text-sm text-muted leading-relaxed">Livraison en 24 à 48 h à Dakar, 2 à 4 jours dans les régions. Livraison offerte dès <?= money(FREE_DELIVERY_THRESHOLD) ?> d'achat. <?= geniuspay_enabled() ? 'Payez en ligne (Wave, Orange Money ou carte bancaire) ou en espèces à la réception.' : 'Payez par Wave, Orange Money ou en espèces à la réception.' ?></p></details>
         <details class="py-4"><summary class="flex items-center justify-between font-semibold text-sm">Échanges<span class="chev transition-transform"><?= icon('chevron-down', 'w-4 h-4') ?></span></summary><p class="pt-3 text-sm text-muted leading-relaxed">La taille ne convient pas ? Contactez-nous sous 7 jours sur WhatsApp : nous organisons l'échange, l'article doit être non porté et dans son état d'origine.</p></details>
       </div>
     </div>

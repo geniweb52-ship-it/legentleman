@@ -227,7 +227,7 @@ require __DIR__ . '/includes/header.php';
         <a href="<?= e(url('commande.php')) ?>" class="btn btn-primary w-full mt-6 !min-h-[52px]">Passer la commande <?= icon('arrow-right', 'w-4 h-4') ?></a>
         <button type="button" data-open="wa-order" class="btn btn-outline w-full mt-3 !min-h-[52px]"><?= icon('whatsapp', 'w-5 h-5 text-[#1DA851]') ?> Commander sur WhatsApp</button>
         <ul class="mt-6 space-y-2.5 text-xs text-muted">
-          <li class="flex items-center gap-2.5"><?= icon('shield', 'w-4 h-4 text-forest') ?> Paiement sécurisé : Wave, Orange Money, espèces</li>
+          <li class="flex items-center gap-2.5"><?= icon('shield', 'w-4 h-4 text-forest') ?> Paiement sécurisé : <?= e(preg_replace('/^En /', 'en ', payment_methods_text())) ?></li>
           <li class="flex items-center gap-2.5"><?= icon('truck', 'w-4 h-4 text-forest') ?> Livraison 24–48 h à Dakar</li>
           <li class="flex items-center gap-2.5"><?= icon('refresh', 'w-4 h-4 text-forest') ?> Échange facile sous 7 jours</li>
         </ul>

@@ -37,6 +37,32 @@ function redirect(string $path): never
     exit;
 }
 
+/** Réglage GeniusPay de config.php ('' si absent : les anciens config.php restent valides). */
+function geniuspay_config(string $name): string
+{
+    return defined($name) ? (string) constant($name) : '';
+}
+
+/** Le paiement en ligne GeniusPay est proposé dès que les deux clés API sont renseignées. */
+function geniuspay_enabled(): bool
+{
+    return geniuspay_config('GENIUSPAY_PUBLIC_KEY') !== '' && geniuspay_config('GENIUSPAY_SECRET_KEY') !== '';
+}
+
+/** Moyens de paiement acceptés, en une phrase courte (bandeaux de réassurance, FAQ…). */
+function payment_methods_text(): string
+{
+    return geniuspay_enabled()
+        ? 'En ligne (Wave, Orange Money, carte) ou à la livraison'
+        : 'Wave, Orange Money ou à la livraison';
+}
+
+/** Badges des moyens de paiement affichés en pied de page. */
+function payment_badges(): array
+{
+    return geniuspay_enabled() ? ['Wave', 'Orange Money', 'Carte bancaire', 'Espèces'] : ['Wave', 'Orange Money', 'Espèces'];
+}
+
 function money(int $amount): string
 {
     return number_format($amount, 0, ' ', ' ') . ' FCFA';

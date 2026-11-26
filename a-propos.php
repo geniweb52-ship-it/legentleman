@@ -11,7 +11,7 @@ ob_start(); ?>
   <?php endforeach; ?>
 </div>
 <h2>Notre engagement</h2>
-<p>Livraison rapide à Dakar et dans toutes les régions du Sénégal, paiement simple par Wave, Orange Money ou en espèces, et échange facile si la taille ne convient pas.</p>
+<p>Livraison rapide à Dakar et dans toutes les régions du Sénégal, paiement simple <?= geniuspay_enabled() ? 'en ligne (Wave, Orange Money, carte bancaire)' : 'par Wave, Orange Money' ?> ou en espèces, et échange facile si la taille ne convient pas.</p>
 <a href="<?= e(url('boutique.php')) ?>" class="btn btn-primary mt-4">Découvrir la collection</a>
 <?php $pageBody = ob_get_clean();
 require __DIR__ . '/includes/page.php';

@@ -75,7 +75,7 @@ if ($holiday && $holiday['image'] !== '') $heroImage = $holiday['image'];
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-4 py-10 border-b border-line">
       <?php foreach ([
         ['truck', 'Livraison rapide', 'à Dakar et dans les régions'],
-        ['card', 'Paiement sécurisé', 'Wave, Orange Money ou à la livraison'],
+        ['card', 'Paiement sécurisé', payment_methods_text()],
         ['refresh', 'Échange facile', 'en cas de taille non adaptée'],
         ['shield', 'Produits de qualité', 'et marques authentiques'],
       ] as [$ic, $title, $text]): ?>

@@ -3,7 +3,7 @@
     <div class="max-w-site mx-auto px-4 sm:px-6 py-10 grid grid-cols-2 lg:grid-cols-4 gap-8">
       <?php foreach ([
         ['truck', 'Livraison rapide', 'À Dakar et dans les régions'],
-        ['card', 'Paiement sécurisé', 'Wave, Orange Money ou à la livraison'],
+        ['card', 'Paiement sécurisé', payment_methods_text()],
         ['refresh', 'Échange facile', 'Sous 7 jours en cas de taille non adaptée'],
         ['shield', 'Produits de qualité', 'Sélection soignée et marques authentiques'],
       ] as [$ic, $title, $text]): ?>
@@ -47,12 +47,12 @@
           <p class="text-white font-semibold text-sm mb-4">Une question ?</p>
           <p class="text-sm text-white/65">Notre équipe vous répond rapidement sur WhatsApp pour une taille, une disponibilité ou une commande.</p>
           <a href="<?= e(whatsapp_url('Bonjour LE GENTLEMAN, j\'ai une question.')) ?>" target="_blank" rel="noopener" class="btn bg-white text-forest-dark hover:bg-cream mt-5 !min-h-11"><?= icon('whatsapp') ?> Discuter sur WhatsApp</a>
-          <p class="mt-6 text-xs text-white/60">Paiements acceptés</p><div class="mt-2 flex flex-wrap gap-2 text-xs"><span class="px-2.5 py-1 rounded bg-white/10 text-white whitespace-nowrap">Wave</span><span class="px-2.5 py-1 rounded bg-white/10 text-white whitespace-nowrap">Orange Money</span><span class="px-2.5 py-1 rounded bg-white/10 text-white whitespace-nowrap">Espèces</span></div>
+          <p class="mt-6 text-xs text-white/60">Paiements acceptés</p><div class="mt-2 flex flex-wrap gap-2 text-xs"><?php foreach (payment_badges() as $badge): ?><span class="px-2.5 py-1 rounded bg-white/10 text-white whitespace-nowrap"><?= e($badge) ?></span><?php endforeach; ?></div>
         </div>
       </div>
       <div class="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row gap-3 justify-between text-xs text-white/50">
         <p>© <?= date('Y') ?> <?= e(SHOP_NAME) ?>. Tous droits réservés.</p>
-        <div class="flex gap-5"><a href="<?= e(url('cgv.php')) ?>" class="hover:text-white">Conditions générales</a><a href="<?= e(url('confidentialite.php')) ?>" class="hover:text-white">Confidentialité</a></div>
+        <div class="flex flex-wrap gap-x-5 gap-y-2"><a href="<?= e(url('cgv.php')) ?>" class="hover:text-white">Conditions générales de vente</a><a href="<?= e(url('conditions-utilisation.php')) ?>" class="hover:text-white">Conditions d’utilisation</a><a href="<?= e(url('confidentialite.php')) ?>" class="hover:text-white">Confidentialité</a></div>
       </div>
     </div>
   </footer>
